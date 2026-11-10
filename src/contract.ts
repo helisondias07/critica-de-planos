@@ -15,6 +15,18 @@ export const CRITIC_KINDS = [
 ] as const;
 export type CriticKind = (typeof CRITIC_KINDS)[number];
 
+export const SOURCE_KINDS = [
+  "step",
+  "constraint",
+  "evidence",
+  "context",
+  "objective",
+] as const;
+export type SourceKind = (typeof SOURCE_KINDS)[number];
+
+export const PROOF_KINDS = ["observed-excerpt", "inferred-absence"] as const;
+export type ProofKind = (typeof PROOF_KINDS)[number];
+
 export interface PlanStep {
   id: string;
   title: string;
@@ -39,8 +51,18 @@ export interface Finding {
   id: string;
   severity: Severity;
   category: Category;
+  /** Passo ao qual o risco/lacuna se refere. */
   stepId: string;
-  evidenceId: string;
+  /** Origem do trecho citado — não precisa ser o array evidence. */
+  sourceKind: SourceKind;
+  /** sN, cN, eN, "objective" ou "context". */
+  sourceId: string;
+  /**
+   * observed-excerpt: o trecho sustenta a afirmação.
+   * inferred-absence: o trecho é contexto observado; a falta em si não está escrita.
+   * Validação estrutural NÃO prova relevância semântica de modelo.
+   */
+  proofKind: ProofKind;
   title: string;
   hypothesis: string;
   citedEvidence: string;

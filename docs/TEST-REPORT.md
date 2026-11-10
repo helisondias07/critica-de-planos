@@ -1,81 +1,60 @@
 # TEST-REPORT — Crítica de planos
 
-Ambiente real desta execução:
+Ambiente:
 
 - Node `v22.23.4`
 - npm `10.9.9`
-- Data UTC: `2026-11-10T00:16:14Z`
-- Comando: `npx tsc -p tsconfig.json --noEmit` (exit 0)
-- Comando: `npm run build` (exit 0)
-- Comando: `npx tsx --test tests/*.test.ts`
+- Comandos: `npx tsc -p tsconfig.json --noEmit`; `npm run build`; `npx tsx --test tests/a11y-markup.test.ts tests/cli-http.test.ts tests/heuristic.test.ts tests/pipeline.test.ts tests/keyboard-ui.test.ts`
 
-## Contagem
+Log: `/opt/cursor/artifacts/test-output.txt`
+
+## Defaults do núcleo vs overrides de demo
+
+Defaults (`src/defaults.ts`): `maxCalls=3`, `maxRetries=1`, `totalTimeoutMs=8000`, `attemptTimeoutMs=2500`.  
+CLI/HTTP usam estes valores se o chamador não passar limites.
+
+Overrides **apenas** no laboratório da UI (`web/app.js`) e nas demos de timeout da CLI: `attemptTimeoutMs=80`, `totalTimeoutMs=200`, `maxRetries=0`; botão limite usa `maxCalls=0`. Não alteram o default.
+
+## Contagem desta passagem (2026-11-10T00:24:14Z)
 
 ```
-# tests 26
-# suites 8
-# pass 26
+# tests 32
+# suites 9
+# pass 32
 # fail 0
 ```
 
-Log completo: `/opt/cursor/artifacts/test-output.txt`
+`typecheck_exit=0`, `build_exit=0`, `tests_exit=0`.
 
-Nada falhou nesta passagem. Duas asserções de heurística falharam numa passagem **anterior** (auth olhava evidência; passo de teste citava localStorage) e foram corrigidas antes deste relatório.
+Nesta passagem **nada falhou**. Falhas anteriores já corrigidas: citação em `e1` irrelevante; auth no passo `s2`; `page.evaluate`/`__name`; banner sticky.
 
-## O que os testes cobrem
+## Âncora de evidência (regressão)
 
-| Área | Arquivo | Resultado |
-|------|---------|-----------|
-| Marcação a11y / viewport CSS / sem CDN | `tests/a11y-markup.test.ts` | 3 pass |
-| CLI stdout/stderr e exit 2 | `tests/cli-http.test.ts` | 3 pass |
-| HTTP health, HTML, POST ruim, POST malformado | `tests/cli-http.test.ts` | 4 pass |
-| Par ruim/corrigido, plano bom, injeção | `tests/heuristic.test.ts` | 5 pass |
-| Fixtures distintas | `tests/heuristic.test.ts` | 1 pass |
-| Input inválido | `tests/pipeline.test.ts` | 2 pass |
-| timeout, unavailable, invalid, invented, maxCalls, llm-pending, retries | `tests/pipeline.test.ts` | 7 pass |
-| Sanitizador de citação | `tests/pipeline.test.ts` | 1 pass |
+`tests/heuristic.test.ts`:
 
-## Par ruim / corrigido (sem métrica de precisão)
+- Achado de cartão: `sourceKind=step`, `sourceId=s2`, `proofKind=observed-excerpt`, trecho com `localStorage` e `cartão`, **não** o catálogo `e1`.
+- Achado de autenticação: `sourceKind=step`, `sourceId=s3`, `proofKind=inferred-absence` (hipótese de omissão), trecho do passo de pagamento, **não** `e1`.
+- `ecommerce-fixed.json`: `findings.length === 0` neste recorte (não é precisão universal).
+- `ecommerce-good.json`: idem, zero achados neste recorte.
 
-Execução CLI (`/opt/cursor/artifacts/demo-cli.txt`):
+A sanitização confirma só que o trecho está na origem declarada. **Não** afirma relevância semântica de LLM.
 
-- `ecommerce-bad.json`: status `ok`, exit 0, achados F01–F06 (critical/high presentes: cartão em localStorage, checkout sem sessão, pressuposto, conflito de restrição, pagamento sem mock, a11y).
-- `ecommerce-fixed.json`: status `ok`, exit 0; os títulos de armazenamento de cartão e checkout sem sessão **não** reaparecem.
-- `ecommerce-good.json`: status `ok`, exit 0, `findings: []` neste recorte. **Não** interpretar como “zero falso positivo universal”.
+## Teclado real (Chrome)
 
-## Falhas, limites, payload malicioso (CLI real)
+`tests/keyboard-ui.test.ts` (puppeteer-core + `/usr/bin/google-chrome-stable`):
 
-| Caso | status | exit |
-|------|--------|------|
-| malformed | input_error | 2 |
-| prompt-injection | ok (achado de injeção; campos extra ignorados) | 0 |
-| fake:timeout | unavailable | 3 |
-| fake:error | unavailable | 3 |
-| fake:invalid | invalid | 4 |
-| fake:invented | ok, findings vazios, dropped≥1 | 0 |
-| max-calls 0 | unavailable CALL_LIMIT | 3 |
-| llm-pending | unavailable | 3 |
+1. Tab no skip link; seta troca aba Bancada→Exemplos; foco no botão Correr crítica com outline.
+2. Alt+2 / Alt+R corre crítica e mostra `origem step:s2`.
+3. Alt+4 + Enter em “Input malformado” mostra alerta de `input_error`.
+4. Viewport 390px: `scrollWidth <= clientWidth`; contraste medido do `.stamp` ≥ 4.5:1.
 
-O caso invented é **status ok** com achados descartados: o provedor respondeu, a sanitização removeu evidência inventada. Não é aprovação.
+Não executámos axe-core nem leitor de tela.
 
-## UI (não é produto de outro fornecedor)
+## Par ruim / corrigido
 
-Servidor: `npx tsx src/server.ts` em `http://127.0.0.1:43147` (`GET /` 200, `GET /api/health` llm=false hooks=false).
-
-Screenshots **reais** (Chrome headless do sistema, Puppeteer-core temporário, **não** dependência do projeto):
-
-- Desktop 1280×800: `ui-desktop-bancada.png`, `ui-desktop-exemplos-ruim.png`, `ui-desktop-inspecao-ruim.png`, `ui-desktop-inspecao-bom.png`, `ui-desktop-falhas-timeout.png`, `ui-desktop-falhas-invalid.png`
-- Mobile emulado 390×844: `ui-mobile-bancada.png`, `ui-mobile-inspecao.png`, `ui-mobile-erro.png`
-
-Limitações honestas de UI:
-
-- Viewport móvel é emulação Chrome, não aparelho físico.
-- Não rodamos axe-core/engine de leitor de tela; há testes de marcação (skip link, tablist, live region, foco, reduced motion) e inspeção visual das screenshots.
-- Puppeteer-core foi instalado só para capturar e **desinstalado**; o lockfile do experimento permanece com typescript/tsx/@types/node.
-
-## Distinção mock vs modelo
-
-Tudo nesta bateria é heurística, replay ou fake. `llm-pending` falha localmente. **Nenhuma chamada a modelo real.**
+- `fixtures/ecommerce-bad.json`: achados ancorados em passo/restrição/objetivo.
+- `fixtures/ecommerce-fixed.json`: **vazio**.
+- `fixtures/ecommerce-good.json`: **vazio**.
 
 ## Status
 

@@ -137,9 +137,9 @@ function renderAchados(result) {
     card.className = `card sev-${f.severity}`;
     card.innerHTML = `
       <h3>${escapeHtml(f.id)} · ${escapeHtml(f.title)}</h3>
-      <p class="meta">${escapeHtml(f.severity)} / ${escapeHtml(f.category)} · passo ${escapeHtml(f.stepId)} · evidência ${escapeHtml(f.evidenceId)}</p>
+      <p class="meta">${escapeHtml(f.severity)} / ${escapeHtml(f.category)} · ${escapeHtml(f.proofKind)} · passo ${escapeHtml(f.stepId)} · origem ${escapeHtml(f.sourceKind)}:${escapeHtml(f.sourceId)}</p>
       <p><strong>Hipótese.</strong> ${escapeHtml(f.hypothesis)}</p>
-      <p><strong>Evidência citada.</strong> ${escapeHtml(f.citedEvidence)}</p>
+      <p><strong>Trecho observado.</strong> ${escapeHtml(f.citedEvidence)}</p>
       <p><strong>Verificação.</strong> ${escapeHtml(f.verificationAction)}</p>
       <p class="meta">Não executar esta verificação automaticamente.</p>`;
     root.append(card);
@@ -198,6 +198,7 @@ fixtureSelect.addEventListener("change", loadFixture);
 for (const btn of document.querySelectorAll("[data-lab]")) {
   btn.addEventListener("click", async () => {
     const kind = btn.getAttribute("data-lab");
+    // Overrides de DEMO (não são os defaults do núcleo: maxCalls=3, retries=1, totalTimeoutMs=8000, attemptTimeoutMs=2500).
     const labs = {
       timeout: { fixture: "timeout-lab.json", provider: "fake:timeout", limits: { attemptTimeoutMs: 80, totalTimeoutMs: 200, maxRetries: 0 } },
       invalid: { fixture: "timeout-lab.json", provider: "fake:invalid" },

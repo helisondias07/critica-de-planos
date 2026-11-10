@@ -24,33 +24,48 @@ describe("heurística determinística (não é LLM)", () => {
     assert.ok(titles.some((t) => /pressuposto/i.test(t)));
     for (const f of result.findings) {
       assert.match(f.stepId, /^s[0-9]+$/);
-      assert.match(f.evidenceId, /^e[0-9]+$/);
+      assert.ok(["step", "constraint", "evidence", "context", "objective"].includes(f.sourceKind));
+      assert.ok(f.citedEvidence.length >= 8);
       assert.ok(f.verificationAction.length >= 8);
       assert.ok(f.hypothesis.length >= 8);
     }
   });
 
-  it("no plano corrigido, some o armazenamento de cartão e o checkout sem sessão", async () => {
+  it("cartão e autenticação não se ancoram no catálogo e1 irrelevante", async () => {
+    const result = await critique("ecommerce-bad.json");
+    const catalog = "Catálogo sintético com três SKUs têxteis";
+    const card = result.findings.find((f) => /Armazenamento de dados de cartão/.test(f.title));
+    const auth = result.findings.find((f) => /Checkout sem passo de autenticação/.test(f.title));
+    assert.ok(card);
+    assert.equal(card.sourceKind, "step");
+    assert.equal(card.sourceId, "s2");
+    assert.equal(card.proofKind, "observed-excerpt");
+    assert.match(card.citedEvidence, /localStorage/i);
+    assert.match(card.citedEvidence, /cartão/i);
+    assert.equal(card.citedEvidence.includes(catalog), false);
+    assert.equal(card.sourceId === "e1", false);
+
+    assert.ok(auth);
+    assert.equal(auth.sourceKind, "step");
+    assert.equal(auth.sourceId, "s3");
+    assert.equal(auth.proofKind, "inferred-absence");
+    assert.match(auth.citedEvidence, /pagamento|cobrar|cartão/i);
+    assert.equal(auth.citedEvidence.includes(catalog), false);
+    assert.match(auth.hypothesis, /inferência|ausência/i);
+  });
+
+  it("plano corrigido fica sem achados neste recorte (não é precisão universal)", async () => {
     const bad = await critique("ecommerce-bad.json");
     const fixed = await critique("ecommerce-fixed.json");
     assert.equal(fixed.status, "ok");
-    const badTitles = bad.findings.map((f) => f.title).join(" | ");
-    const fixedTitles = fixed.findings.map((f) => f.title).join(" | ");
-    assert.match(badTitles, /cartão/i);
-    assert.doesNotMatch(fixedTitles, /Armazenamento de dados de cartão/);
-    assert.doesNotMatch(fixedTitles, /Checkout sem passo de autenticação/);
-    // Avaliação qualitativa do par, sem métrica de precisão inventada.
-    assert.ok(
-      bad.findings.filter((f) => f.severity === "critical" || f.severity === "high").length >
-        fixed.findings.filter((f) => f.severity === "critical" || f.severity === "high").length,
-    );
+    assert.ok(bad.findings.length > 0);
+    assert.equal(fixed.findings.length, 0);
   });
 
-  it("plano bom não gera critical/high neste recorte (não é ausência de falso positivo universal)", async () => {
+  it("plano bom não gera achados neste recorte (não é ausência de falso positivo universal)", async () => {
     const good = await critique("ecommerce-good.json");
     assert.equal(good.status, "ok");
-    const severe = good.findings.filter((f) => f.severity === "critical" || f.severity === "high");
-    assert.equal(severe.length, 0);
+    assert.equal(good.findings.length, 0);
   });
 
   it("injeção literal não é seguida e vira achado de risco", async () => {

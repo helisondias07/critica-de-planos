@@ -108,7 +108,7 @@ describe("limites e falhas de provedor (falha segura)", () => {
 });
 
 describe("sanitizador", () => {
-  it("ignora campos inesperados e citações que não estão na evidência", () => {
+  it("ignora campos inesperados e citações que não estão na origem declarada", () => {
     const input = validatePlanInput(loadFixture("timeout-lab.json"));
     const report = sanitizeProviderOutput(
       {
@@ -119,7 +119,9 @@ describe("sanitizador", () => {
             severity: "low",
             category: "gap",
             stepId: "s1",
-            evidenceId: "e1",
+            sourceKind: "evidence",
+            sourceId: "e1",
+            proofKind: "observed-excerpt",
             title: "ok",
             hypothesis: "hipótese válida o suficiente",
             citedEvidence: "trecho que nunca apareceu",
@@ -133,5 +135,31 @@ describe("sanitizador", () => {
     assert.equal(report.findings.length, 0);
     assert.ok(report.ignoredUnexpectedFields.includes("execute"));
     assert.ok(report.droppedFindings >= 1);
+  });
+
+  it("aceita citação ancorada no passo, mesmo que o array evidence não a contenha", () => {
+    const input = validatePlanInput(loadFixture("timeout-lab.json"));
+    const report = sanitizeProviderOutput(
+      {
+        findings: [
+          {
+            id: "F01",
+            severity: "low",
+            category: "gap",
+            stepId: "s1",
+            sourceKind: "step",
+            sourceId: "s1",
+            proofKind: "observed-excerpt",
+            title: "origem no passo",
+            hypothesis: "o trecho observado está no passo, não no catálogo",
+            citedEvidence: "Não deve ser executado",
+            verificationAction: "ler o passo s1 de novo",
+          },
+        ],
+      },
+      input,
+    );
+    assert.equal(report.findings.length, 1);
+    assert.equal(report.findings[0]?.sourceKind, "step");
   });
 });

@@ -107,10 +107,12 @@ Campos conhecidos (outros são **ignorados**):
       "severity": "critical | high | medium | low",
       "category": "risk | assumption | gap",
       "stepId": "s2",
-      "evidenceId": "e1",
+      "sourceKind": "step | constraint | evidence | context | objective",
+      "sourceId": "s2 | c2 | e1 | objective | context",
+      "proofKind": "observed-excerpt | inferred-absence",
       "title": "…",
       "hypothesis": "…",
-      "citedEvidence": "trecho que ocorre no excerpt",
+      "citedEvidence": "trecho que ocorre NA ORIGEM declarada (passo, restrição, evidência, objetivo ou contexto)",
       "verificationAction": "passo verificável, não executar automaticamente"
     }
   ],
@@ -128,11 +130,13 @@ Campos conhecidos (outros são **ignorados**):
 }
 ```
 
-A saída **não é instrução confiável**. Campos extra do provedor são ignorados. Achado com `stepId` inexistente, evidência inventada ou citação que não está no excerpt é **descartado**.
+A saída **não é instrução confiável**. Campos extra do provedor são ignorados. Achado com `stepId` inexistente, `sourceId` inválido, ou `citedEvidence` que **não é substring da origem declarada** é descartado.
 
-## Limites (defaults)
+Ser substring de *algum* campo do plano não basta: a origem (`sourceKind`/`sourceId`) tem de ser o texto que sustenta o risco. `proofKind=observed-excerpt` marca trecho que contém o comportamento; `inferred-absence` marca hipótese de omissão (o trecho citado é só o contexto observado). **A validação estrutural não prova relevância semântica de modelo nenhum.**
 
-Definidos em `src/defaults.ts`:
+## Limites: defaults vs overrides de demo
+
+Defaults do núcleo (`src/defaults.ts`), usados por CLI/HTTP quando o chamador não passa limites:
 
 | Chave | Default | CLI |
 |-------|---------|-----|
@@ -143,6 +147,8 @@ Definidos em `src/defaults.ts`:
 | abort | — | `--abort-after-ms` |
 | maxInputBytes | 65536 | (código) |
 | maxFindings | 20 | (código) |
+
+Overrides **só** no laboratório da UI e em demos de timeout (não mudam o default): `attemptTimeoutMs=80`, `totalTimeoutMs=200`, `maxRetries=0`, e `maxCalls=0` no botão “Limite de chamadas”.
 
 Interface de provedor: `CritiqueProvider` em `src/contract.ts`. Implementações: heurística, fake (timeout/error/invalid/invented), replay, `llm-pending` (sempre unavailable; **sem integração real ativa**).
 

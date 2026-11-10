@@ -1,15 +1,20 @@
 import {
   CATEGORIES,
   CRITIC_KINDS,
+  PROOF_KINDS,
   SEVERITIES,
+  SOURCE_KINDS,
   STATUSES,
   type CritiqueResult,
   type Finding,
   type PlanEvidence,
   type PlanInput,
   type PlanStep,
+  type ProofKind,
+  type SourceKind,
 } from "./contract.js";
 import { DEFAULTS } from "./defaults.js";
+import { quoteContains, resolveSourceText } from "./source.js";
 
 export class InputValidationError extends Error {
   readonly code = "INPUT_ERROR";
@@ -136,12 +141,19 @@ export function validatePlanInput(raw: unknown, maxBytes = DEFAULTS.maxInputByte
   return { objective, steps, constraints, evidence, context };
 }
 
-function includesCitation(excerpt: string, cited: string): boolean {
-  const normalize = (s: string) => s.replace(/\s+/g, " ").trim().toLowerCase();
-  const a = normalize(excerpt);
-  const b = normalize(cited);
-  return b.length >= 8 && a.includes(b);
-}
+const FINDING_FIELDS = [
+  "id",
+  "severity",
+  "category",
+  "stepId",
+  "sourceKind",
+  "sourceId",
+  "proofKind",
+  "title",
+  "hypothesis",
+  "citedEvidence",
+  "verificationAction",
+];
 
 export interface SanitizeReport {
   findings: Finding[];
@@ -178,7 +190,6 @@ export function sanitizeProviderOutput(
   }
 
   const stepIds = new Set(input.steps.map((s) => s.id));
-  const evidenceById = new Map(input.evidence.map((e) => [e.id, e]));
   const usedFindingIds = new Set<string>();
   const findings: Finding[] = [];
   let dropped = 0;
@@ -189,26 +200,16 @@ export function sanitizeProviderOutput(
       continue;
     }
     for (const key of Object.keys(item)) {
-      const allowed = [
-        "id",
-        "severity",
-        "category",
-        "stepId",
-        "evidenceId",
-        "title",
-        "hypothesis",
-        "citedEvidence",
-        "verificationAction",
-      ];
-      if (!allowed.includes(key)) ignored.push(`finding.${key}`);
+      if (!FINDING_FIELDS.includes(key)) ignored.push(`finding.${key}`);
     }
 
     const id = typeof item.id === "string" ? item.id.trim() : "";
     const severity = item.severity;
     const category = item.category;
     const stepId = typeof item.stepId === "string" ? item.stepId.trim() : "";
-    const evidenceId =
-      typeof item.evidenceId === "string" ? item.evidenceId.trim() : "";
+    const sourceKind = item.sourceKind as SourceKind;
+    const sourceId = typeof item.sourceId === "string" ? item.sourceId.trim() : "";
+    const proofKind = item.proofKind as ProofKind;
     const title = typeof item.title === "string" ? item.title.trim() : "";
     const hypothesis =
       typeof item.hypothesis === "string" ? item.hypothesis.trim() : "";
@@ -219,14 +220,18 @@ export function sanitizeProviderOutput(
         ? item.verificationAction.trim()
         : "";
 
-    const evidence = evidenceById.get(evidenceId);
+    const originText = SOURCE_KINDS.includes(sourceKind)
+      ? resolveSourceText(input, sourceKind, sourceId)
+      : undefined;
     const ok =
       /^F[0-9]{2,4}$/.test(id) &&
       !usedFindingIds.has(id) &&
       SEVERITIES.includes(severity as Finding["severity"]) &&
       CATEGORIES.includes(category as Finding["category"]) &&
+      PROOF_KINDS.includes(proofKind) &&
+      SOURCE_KINDS.includes(sourceKind) &&
       stepIds.has(stepId) &&
-      evidence !== undefined &&
+      typeof originText === "string" &&
       title.length >= 3 &&
       title.length <= 200 &&
       hypothesis.length >= 8 &&
@@ -235,8 +240,7 @@ export function sanitizeProviderOutput(
       citedEvidence.length <= DEFAULTS.maxStringChars &&
       verificationAction.length >= 8 &&
       verificationAction.length <= DEFAULTS.maxStringChars &&
-      evidence !== undefined &&
-      includesCitation(evidence.excerpt, citedEvidence);
+      quoteContains(originText, citedEvidence);
 
     if (!ok || findings.length >= DEFAULTS.maxFindings) {
       dropped += 1;
@@ -248,7 +252,9 @@ export function sanitizeProviderOutput(
       severity: severity as Finding["severity"],
       category: category as Finding["category"],
       stepId,
-      evidenceId,
+      sourceKind,
+      sourceId,
+      proofKind,
       title,
       hypothesis,
       citedEvidence,

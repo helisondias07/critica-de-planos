@@ -2,6 +2,7 @@ export { DEFAULTS, DISCLAIMER } from "./defaults.js";
 export { runCritique, exitCodeFor, EXIT_CODES } from "./pipeline.js";
 export { validatePlanInput, sanitizeProviderOutput, InputValidationError } from "./validate.js";
 export { runHeuristic } from "./heuristic.js";
+export { resolveSourceText, quoteContains } from "./source.js";
 export {
   createFakeProvider,
   createHeuristicProvider,

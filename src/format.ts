@@ -19,7 +19,7 @@ export function formatSummary(result: CritiqueResult): string {
   }
   for (const f of result.findings) {
     lines.push(
-      `  [${f.severity}/${f.category}] ${f.id} step=${f.stepId} evidence=${f.evidenceId} — ${f.title}`,
+      `  [${f.severity}/${f.category}/${f.proofKind}] ${f.id} step=${f.stepId} origem=${f.sourceKind}:${f.sourceId} — ${f.title}`,
     );
   }
   lines.push(result.disclaimer);

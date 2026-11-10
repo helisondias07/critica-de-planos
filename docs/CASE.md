@@ -2,49 +2,48 @@
 
 ## Problema
 
-Planos gerados (por pessoa ou por modelo) misturam passo útil com pressuposto implícito, lacuna e risco. Uma “segunda opinião” que **aprove** ou **execute** o plano é perigosa. O pedido era um recorte testável: protocolo JSON + CLI, sem fingir hook do Cursor e sem modelo real.
+Planos misturam passo útil com pressuposto, lacuna e risco. Uma “segunda opinião” que aprove ou execute o plano é perigosa. O recorte é protocolo JSON + CLI + bancada local, sem hook do Cursor e sem modelo real.
 
-A referência pública [jrlucas1/claude-critique-hook](https://github.com/jrlucas1/claude-critique-hook) (João Raul) inspirou o *problema* (“segunda passagem sobre um plano”). Metadata GitHub: `license: null`; LICENSE não encontrado. **Nenhum trecho foi reutilizado.** Este artefato não se apresenta como o projeto de João Raul.
+Inspiração de problema: [jrlucas1/claude-critique-hook](https://github.com/jrlucas1/claude-critique-hook) (João Raul). `license: null`; **nenhum trecho reutilizado.**
 
 ## Solução neste MVP
 
-1. Contrato tipado (`PlanInput` / `CritiqueResult`) + JSON Schema documental + validador próprio.
-2. Núcleo `runCritique`: limites, retries, timeout por tentativa e total, `AbortController`.
-3. Crítico **heurístico determinístico** sobre e-commerce frontend sintético.
-4. Provedores `fake` e `llm-pending` (este último só falha localmente).
-5. Sanitização: ignora campos inesperados; descarta evidência inventada e `stepId` inválido.
-6. CLI com JSON no stdout e resumo no stderr; exit codes documentados.
-7. Bancada web local (layout próprio) para inspecionar exemplos bom/ruim/corrigido e falhas.
+1. Contrato tipado com origem explícita do trecho (`sourceKind` / `sourceId` / `proofKind`).
+2. `runCritique` com limites, retries, timeout, abort.
+3. Crítico heurístico determinístico (e-commerce frontend sintético).
+4. Provedores fake e `llm-pending` (falha local).
+5. Sanitização: o `citedEvidence` tem de ser substring da **origem declarada** (passo, restrição, evidência, objetivo ou contexto) — não de um excerpt arbitrário.
+6. CLI: JSON no stdout, resumo no stderr.
+7. Bancada web local.
 
-Falha segura: erro de provedor → `unavailable` ou `invalid`, `findings: []`. Erro de entrada → `input_error` (exit 2), distinguível.
+`proofKind=observed-excerpt`: o trecho contém o comportamento afirmado.  
+`proofKind=inferred-absence`: o trecho é só o contexto observado; a omissão é hipótese.  
+**Validação estrutural não prova relevância semântica de modelo.**
 
 ## Decisões
 
-- TypeScript/Node, dependências só de desenvolvimento (`typescript`, `tsx`, `@types/node`). Runtime: biblioteca padrão.
-- Heurística em vez de LLM: cabe no offline e deixa explícito o que o sistema *não* é.
-- UI sem framework e sem CDN: um servidor HTTP e HTML/CSS/JS próprios, contraste alto, teclado, viewport estreita.
-- Não imitar produto de terceiros; nome visível “Crítica de planos” / “bancada”.
-- Origin draft como fonte; sem GitHub mirror, sem deploy, sem copiar para o disco do usuário.
+- Não “corrigir” as fixtures para o catálogo `e1` falar de cartão: o catálogo continua irrelevante, e os achados passaram a citar o passo/restrição certos.
+- TypeScript/Node; runtime só da biblioteca padrão. `puppeteer-core` é **devDependency** para testes de teclado no Chrome do sistema, não para o crítico.
+- UI sem CDN. Origin draft como fonte. Sem deploy.
 
-## Falhas encontradas no caminho
+## Falhas encontradas
 
-- Primeira versão da heurística usava o *blob* inteiro (incluindo evidência “não descreve sessão”) e **não** disparava lacuna de auth. Corrigido: auth só olha passos.
-- Plano *corrigido* ainda disparava “cartão em localStorage” porque um passo de **teste** citava `localStorage` e `cvv`. Corrigido: a regra exige *gravar/salvar número do cartão*, e ignora “cobre localStorage”.
-- `tsc` recusou imports `.ts` sem `allowImportingTsExtensions`. Imports de `src/` passaram a especifiers `.js` (NodeNext).
+1. Achados BAD citavam `e1` (catálogo) porque `pickEvidence(/cartão/)` casava com “Não descreve … cartão”. Substring em evidência genérica não é prova. Corrigido: âncora obrigatória na origem relevante; sem fallback para `evidence[0]`.
+2. Relatório de UI só provava marcação HTML. Corrigido: Chrome real com Tab, setas, Alt+R, Enter em erro, overflow 390px e contraste simples do stamp.
+3. Heurística de auth escolhia `s2` (menciona “próximo pagamento”). Apertada para o passo de processar/capturar (`s3`).
+4. Banner de erro sticky cobria JSON; passou a bloco estático.
+5. `page.evaluate` com função interna quebrou no tsx (`__name is not defined`); o teste de contraste passou a string.
+
+## FIXED neste recorte
+
+`fixtures/ecommerce-fixed.json` produz **zero achados** na heurística atual. Isso **não** é métrica de precisão nem ausência de falso positivo noutros vocabulários.
 
 ## Limitações
 
-- Heurística é frágil fora do vocabulário das fixtures. Não generaliza para planos arbitrários.
-- Zero findings no plano “bom” **não** prova ausência de falso positivo em outros domínios.
-- Sem axe-core em browser real neste pacote; a11y coberta por marcação/CSS + checagem visual.
-- Integração com modelo real **pendente de propósito**.
-- Sem afirmação de que Cursor aplicará isto em Plan Mode.
-
-## Aprendizados
-
-- “Segunda etapa” precisa recusar aprovação no contrato, não só no texto de UI.
-- Citação de evidência como substring evita achados inventados mais do que um campo livre.
-- Distinguir `input_error` de `unavailable` é o que permite ao chamador seguir o trabalho.
+- Heurística frágil fora das fixtures.
+- Sem axe-core nem leitor de tela.
+- Mobile é emulação 390×844, não aparelho físico.
+- Integração com modelo real pendente. Sem hook/Plan Mode.
 
 ## Status
 
