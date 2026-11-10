@@ -36,9 +36,13 @@ O crítico padrão é **heurístico determinístico** (regras sobre o texto). Ta
 ```bash
 npm ci
 npm run typecheck
+npm run lint
 npm test
 npm run build
+npm run build:static
 ```
+
+`npm run lint` é um script **mínimo e honesto** (`scripts/lint.mjs`): procura padrões de segredo no código e, se `site/app.js` existir, recusa `/api`, `http-chat` e chaves no bundle. **Não é ESLint.**
 
 CLI (JSON em **stdout**, resumo legível em **stderr**):
 
@@ -66,12 +70,36 @@ npm run cli -- --help
 
 MCP: JSON-RPC newline na stdin/stdout. Parse inválido → `-32700`. Exemplo de config de host (não instalado aqui): `docs/examples/cursor-mcp.json.example` usa `node` + `${workspaceFolder}/dist/mcp-stdio.js` (interpolação documentada em [Cursor MCP](https://cursor.com/docs/mcp)). A tabela oficial STDIO **não lista `cwd`**; não foi inventado esse campo. `docs/examples/claude-code.mcp.json.example` para Claude Code. Plano em `docs/INTEGRATION-PLAN.md`. `critique_plan` devolve `isError: true` em `NOT_CONFIGURED` / `unavailable` / `invalid` / `input_error`.
 
-Bancada web local (sem CDN, sem rede de modelo):
+Bancada web local com backend (sem CDN, sem rede de modelo):
 
 ```bash
 npm run demo
 # http://127.0.0.1:43147
 ```
+
+## Demo estática (navegador, para a Vercel como site estático)
+
+A análise heurística corre **no browser**. Só planos de exemplo sintéticos. Sem `http-chat`, sem credenciais, sem `/api`.
+
+```bash
+npm run build:static
+# pasta de saída: site/
+# pré-visualização local (servidor de ficheiros, sem backend):
+npm run demo:static
+# http://127.0.0.1:43151
+```
+
+Configuração **sugerida** na Vercel (não criada nem implantada neste recorte):
+
+| Campo | Valor |
+|-------|--------|
+| Framework Preset | Other (`null` em `vercel.json`) |
+| Build Command | `npm run build:static` |
+| Output Directory | `site` |
+
+O ficheiro `vercel.json` no repo declara esses três campos. **Não há projeto Vercel nem deploy aqui.**
+
+O aviso no topo da demo: «Demo estática: análise heurística local no seu navegador, sem modelo de IA hospedado, nenhum dado enviado». Timeouts e erros do painel Falhas são **simulações locais**, rotuladas como tal.
 
 ## Exit codes do CLI
 

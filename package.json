@@ -14,6 +14,10 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "tsx --test tests/*.test.ts",
+    "test:static": "tsx --test e2e/static.test.ts",
+    "lint": "node scripts/lint.mjs",
+    "build:static": "node scripts/build-static.mjs",
+    "demo:static": "node scripts/serve-static.mjs",
     "cli": "tsx src/cli.ts",
     "demo": "tsx src/server.ts",
     "demo:serve": "tsx src/server.ts",
@@ -21,6 +25,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.15.3",
+    "esbuild": "^0.25.12",
     "puppeteer-core": "^25.17.0",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3"
