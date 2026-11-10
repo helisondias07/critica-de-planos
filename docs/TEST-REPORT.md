@@ -5,11 +5,11 @@ Ambiente: Node `v22.23.4`, npm `10.9.9`. Heurística da fixture ruim: **7 achado
 Defaults do núcleo: maxCalls=3, maxRetries=1, totalTimeoutMs=8000, attemptTimeoutMs=2500.  
 http-chat: maxTokens=800, timeout 8000, **enable default false**. `CRITICA_LLM_MAX_TOKENS=0` é erro de configuração (não cai no 800).
 
-SHA anterior preservado: `803eeb4fe0f3a7f35245118995d0cbab47ef48e2`. Pacotes v1 e v2 em `/opt/cursor/artifacts/` **não** foram substituídos.
+SHA anterior preservado: `803eeb4fe0f3a7f35245118995d0cbab47ef48e2`. SHA v3: `8b7748f30f53083de4c6fc0df7b0739d7c29a291`. Pacotes v1 e v2 em `/opt/cursor/artifacts/` **não** foram substituídos.
 
 Fontes oficiais consultadas em **2026-11-10** (reconsulta nesta passagem): ver `docs/INTEGRATION-PLAN.md`.
 
-Contagem desta passagem (saída REAL de `npm test` após `npm ci`): ver `test-output-v3.txt`. Esperado: **62 testes, 62 pass, 0 fail.**
+Contagem REAL desta passagem (`npm test` após `npm ci`): **62 testes, 62 pass, 0 fail** (`test-output-v3.txt`).
 
 ## O que foi testado (código)
 

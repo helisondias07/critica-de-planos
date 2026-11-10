@@ -1,6 +1,10 @@
-# REVIEW-RESPONSE v3 — SHA 803eeb4 (cloud bc-6bfc96e4-4a62-5b49-a210-29d9b54f1b31)
+# REVIEW-RESPONSE v3
 
-Revisor: cloud separado. Confirmei cada citação no código **antes** de alterar. 803eeb4 permanece no histórico (sem rewrite/force push). Pacotes v1/v2 preservados.
+- SHA anterior (preservado): `803eeb4fe0f3a7f35245118995d0cbab47ef48e2`
+- Revisão independente: cloud `bc-6bfc96e4-4a62-5b49-a210-29d9b54f1b31`
+- SHA desta passagem: `8b7748f30f53083de4c6fc0df7b0739d7c29a291`
+
+Confirmei cada citação no código **antes** de alterar. Sem rewrite/force push. Pacotes v1/v2 preservados.
 
 Status continua **parcial**. Loopback = mock, não LLM. Sem credenciais, sem endpoint externo, sem PR.
 
