@@ -10,7 +10,7 @@ Segunda etapa de revisão de um **plano**. Identifica riscos, pressupostos e lac
 
 - `id` e `severity`
 - `stepId` que existe no plano
-- evidência citada (`evidenceId` + trecho que ocorre no excerpt)
+- trecho citado na origem declarada (`sourceKind`/`sourceId`, não um catálogo genérico)
 - hipótese
 - ação **verificável** (não executada)
 
@@ -21,7 +21,8 @@ O crítico padrão é **heurístico determinístico** (regras sobre o texto). Ta
 - **NÃO é um segundo LLM.**
 - **NÃO valida qualidade de IA.**
 - **NÃO é hook do Cursor, Plan Mode, nem integração automática Plan→Build.** Esses modos existem na documentação de produto; este recorte não os usa e não afirma compatibilidade.
-- **NÃO chama modelo real**, não usa credencial, não compra API.
+- **NÃO chama modelo real neste recorte** (`http-chat` existe mas fica `NOT_CONFIGURED` até o utilizador ligar endpoint+model+enable). Loopback de teste **não é LLM**.
+- Ponte MCP stdio (`npm run mcp`, ferramenta `critique_plan`) é chamada **manual**. Não é Plan→Build.
 
 Inspiração (apenas o problema de “segunda opinião sobre um plano”), **sem reutilizar código**: [jrlucas1/claude-critique-hook](https://github.com/jrlucas1/claude-critique-hook) de João Raul. Consulta pública: `license: null`, sem arquivo LICENSE identificado. Tratado como **licença não identificada** — implementação própria.
 
@@ -52,9 +53,15 @@ npm run cli -- --input fixtures/timeout-lab.json --provider fake:error --retries
 npm run cli -- --input fixtures/timeout-lab.json --provider fake:invalid
 npm run cli -- --input fixtures/timeout-lab.json --provider fake:invented
 npm run cli -- --input fixtures/timeout-lab.json --max-calls 0
+npm run cli -- --input fixtures/ecommerce-bad.json --provider http-chat --retries 0
+npm run mcp
 npm run cli -- --schema
 npm run cli -- --help
 ```
+
+`http-chat` sem `CRITICA_LLM_ENABLED=true` sai `unavailable` / `NOT_CONFIGURED` e **não** corre a heurística.
+
+MCP: JSON-RPC newline na stdin/stdout. Exemplo de config de host (não instalado aqui): `docs/examples/cursor-mcp.json.example`, `docs/examples/claude-code.mcp.json.example`. Plano em `docs/INTEGRATION-PLAN.md`.
 
 Bancada web local (sem CDN, sem rede de modelo):
 
@@ -158,7 +165,7 @@ Domínio sintético: frontend de e-commerce “Loja Norte”. Sem dados reais.
 
 | Arquivo | Papel |
 |---------|--------|
-| `fixtures/ecommerce-bad.json` | Plano ruim |
+| `fixtures/ecommerce-bad.json` | Plano ruim — heurística actual: **7 achados** (F01–F07). Contagem dinâmica, não métrica. |
 | `fixtures/ecommerce-fixed.json` | Mesma história, corrigida |
 | `fixtures/ecommerce-good.json` | Plano já verificável |
 | `fixtures/malformed.json` | Input inválido |

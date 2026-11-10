@@ -16,7 +16,8 @@
     "test": "tsx --test tests/*.test.ts",
     "cli": "tsx src/cli.ts",
     "demo": "tsx src/server.ts",
-    "demo:serve": "tsx src/server.ts"
+    "demo:serve": "tsx src/server.ts",
+    "mcp": "tsx src/mcp-stdio.ts"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",

@@ -1,61 +1,25 @@
 # TEST-REPORT — Crítica de planos
 
-Ambiente:
+Ambiente: Node `v22.23.4`, npm `10.9.9`. Heurística da fixture ruim: **7 achados** (F01–F07), contagem dinâmica. FIXED/GOOD: 0 achados neste recorte (não é acurácia).
 
-- Node `v22.23.4`
-- npm `10.9.9`
-- Comandos: `npx tsc -p tsconfig.json --noEmit`; `npm run build`; `npx tsx --test tests/a11y-markup.test.ts tests/cli-http.test.ts tests/heuristic.test.ts tests/pipeline.test.ts tests/keyboard-ui.test.ts`
+Defaults do núcleo: maxCalls=3, maxRetries=1, totalTimeoutMs=8000, attemptTimeoutMs=2500.  
+Overrides de demo/lab: 80/200/0.  
+http-chat: maxTokens=800, timeout 8000, **enable default false**.
 
-Log: `/opt/cursor/artifacts/test-output.txt`
+Fontes oficiais consultadas em 2026-11-10: ver `docs/INTEGRATION-PLAN.md`.
 
-## Defaults do núcleo vs overrides de demo
+Contagem desta passagem: **45 testes, 45 pass, 0 fail.** Logs v2 em `/opt/cursor/artifacts/`. Pacote v1 `critica-de-planos-source.zip` preservado.
 
-Defaults (`src/defaults.ts`): `maxCalls=3`, `maxRetries=1`, `totalTimeoutMs=8000`, `attemptTimeoutMs=2500`.  
-CLI/HTTP usam estes valores se o chamador não passar limites.
+## O que foi testado (código)
 
-Overrides **apenas** no laboratório da UI (`web/app.js`) e nas demos de timeout da CLI: `attemptTimeoutMs=80`, `totalTimeoutMs=200`, `maxRetries=0`; botão limite usa `maxCalls=0`. Não alteram o default.
+- Typecheck/build
+- Heurística, sanitizador, CLI/HTTP da bancada
+- Teclado Chrome
+- **http-chat loopback** (auth sintético, 401, 429, 5xx, timeout, malformado, injeção, inventados, NOT_CONFIGURED sem fallback)
+- **MCP** in-process e subprocesso stdio (`initialize` / `tools/list` / `tools/call`) com heuristic/fake
 
-## Contagem desta passagem (2026-11-10T00:24:14Z)
-
-```
-# tests 32
-# suites 9
-# pass 32
-# fail 0
-```
-
-`typecheck_exit=0`, `build_exit=0`, `tests_exit=0`.
-
-Nesta passagem **nada falhou**. Falhas anteriores já corrigidas: citação em `e1` irrelevante; auth no passo `s2`; `page.evaluate`/`__name`; banner sticky.
-
-## Âncora de evidência (regressão)
-
-`tests/heuristic.test.ts`:
-
-- Achado de cartão: `sourceKind=step`, `sourceId=s2`, `proofKind=observed-excerpt`, trecho com `localStorage` e `cartão`, **não** o catálogo `e1`.
-- Achado de autenticação: `sourceKind=step`, `sourceId=s3`, `proofKind=inferred-absence` (hipótese de omissão), trecho do passo de pagamento, **não** `e1`.
-- `ecommerce-fixed.json`: `findings.length === 0` neste recorte (não é precisão universal).
-- `ecommerce-good.json`: idem, zero achados neste recorte.
-
-A sanitização confirma só que o trecho está na origem declarada. **Não** afirma relevância semântica de LLM.
-
-## Teclado real (Chrome)
-
-`tests/keyboard-ui.test.ts` (puppeteer-core + `/usr/bin/google-chrome-stable`):
-
-1. Tab no skip link; seta troca aba Bancada→Exemplos; foco no botão Correr crítica com outline.
-2. Alt+2 / Alt+R corre crítica e mostra `origem step:s2`.
-3. Alt+4 + Enter em “Input malformado” mostra alerta de `input_error`.
-4. Viewport 390px: `scrollWidth <= clientWidth`; contraste medido do `.stamp` ≥ 4.5:1.
-
-Não executámos axe-core nem leitor de tela.
-
-## Par ruim / corrigido
-
-- `fixtures/ecommerce-bad.json`: achados ancorados em passo/restrição/objetivo.
-- `fixtures/ecommerce-fixed.json`: **vazio**.
-- `fixtures/ecommerce-good.json`: **vazio**.
+**Não testado:** LLM real, Ollama com pesos, Cursor IDE, Claude Code como host, Plan Mode.
 
 ## Status
 
-MVP local com integração de modelo real pendente.
+Parcial. Loopback HTTP é mock, não LLM.

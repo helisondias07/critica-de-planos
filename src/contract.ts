@@ -12,6 +12,7 @@ export const CRITIC_KINDS = [
   "replay",
   "fake",
   "unavailable",
+  "http-chat",
 ] as const;
 export type CriticKind = (typeof CRITIC_KINDS)[number];
 
@@ -79,6 +80,10 @@ export interface CritiqueMeta {
   aborted: boolean;
   droppedFindings: number;
   ignoredUnexpectedFields: string[];
+  model?: string;
+  endpointHost?: string;
+  transport?: string;
+  blockReason?: string;
 }
 
 export interface CritiqueResult {
@@ -110,6 +115,9 @@ export interface ProviderRequest {
 export interface CritiqueProvider {
   readonly id: string;
   readonly kind: CriticKind;
+  readonly model?: string;
+  readonly endpointHost?: string;
+  readonly transport?: string;
   critique(request: ProviderRequest): Promise<RawProviderOutput>;
 }
 

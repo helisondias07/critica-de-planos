@@ -86,7 +86,7 @@ Uso:
 
 Flags:
   --input <arquivo.json>     Plano sintético (objective, steps, constraints, evidence)
-  --provider heuristic|replay|fake|fake:timeout|fake:error|fake:invalid|fake:invented|llm-pending
+  --provider heuristic|replay|fake|fake:timeout|fake:error|fake:invalid|fake:invented|llm-pending|http-chat
   --max-calls N              default ${DEFAULTS.maxCalls}
   --retries N                default ${DEFAULTS.maxRetries}
   --timeout-ms N             timeout total, default ${DEFAULTS.totalTimeoutMs}
@@ -104,8 +104,9 @@ Streams:
 Exit codes:
   0 ok | 1 inesperado | 2 input_error | 3 unavailable | 4 invalid
 
-Este CLI NÃO é hook do Cursor, NÃO usa Plan Mode, NÃO chama modelo real
-e NÃO executa os achados. O crítico padrão é heurístico determinístico.
+http-chat fica NOT_CONFIGURED salvo CRITICA_LLM_ENABLED=true + endpoint + model.
+Não há fallback silencioso para heurística. MCP stdio: npm run mcp (ferramenta critique_plan).
+Este CLI NÃO é hook do Cursor, NÃO usa Plan Mode, NÃO executa os achados.
 `;
 
 export async function runCli(argv: string[], io = { stdout: process.stdout, stderr: process.stderr }): Promise<number> {

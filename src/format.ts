@@ -10,7 +10,8 @@ export function formatSummary(result: CritiqueResult): string {
     "Crítica de planos — revisão de segunda etapa (não executa, não aprova)",
     `status: ${result.status}    exit: ${EXIT_CODES[result.status]}`,
     `crítico: ${kind}    provider: ${result.meta.providerId}`,
-    "NÃO é segundo LLM. NÃO valida qualidade de IA. NÃO há hook/plan mode.",
+    `model=${result.meta.model ?? "n/a"} transport=${result.meta.transport ?? "n/a"} host=${result.meta.endpointHost ?? "n/a"} block=${result.meta.blockReason ?? "n/a"}`,
+    "NÃO é segundo LLM salvo http-chat habilitado. NÃO é Plan→Build. Loopback HTTP falso NÃO é LLM.",
     `chamadas: ${result.meta.callsUsed}/${result.meta.maxCalls}  retries: ${result.meta.retriesUsed}  timeout=${result.meta.timedOut}  abort=${result.meta.aborted}  dropped=${result.meta.droppedFindings}`,
     `achados: ${result.findings.length} (critical ${counts.critical}, high ${counts.high}, medium ${counts.medium}, low ${counts.low})`,
   ];

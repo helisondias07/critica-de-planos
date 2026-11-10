@@ -18,6 +18,7 @@ describe("heurística determinística (não é LLM)", () => {
     assert.equal(result.criticKind, "heuristic-deterministic");
     assert.match(result.disclaimer, /NÃO é um segundo LLM/);
     const titles = result.findings.map((f) => f.title);
+    assert.equal(result.findings.length, 7);
     assert.ok(result.findings.some((f) => f.severity === "critical"));
     assert.ok(titles.some((t) => /cartão/i.test(t)));
     assert.ok(titles.some((t) => /autenticação|sessão/i.test(t)));

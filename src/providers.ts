@@ -5,7 +5,11 @@ import type {
   ProviderRequest,
   RawProviderOutput,
 } from "./contract.js";
+import { ProviderError } from "./errors.js";
 import { runHeuristic } from "./heuristic.js";
+import { createHttpChatProviderFromEnv } from "./http-chat.js";
+
+export { ProviderError } from "./errors.js";
 
 export type FakeMode =
   | "ok"
@@ -14,15 +18,6 @@ export type FakeMode =
   | "invalid"
   | "invented"
   | "hang";
-
-export class ProviderError extends Error {
-  readonly code: string;
-  constructor(code: string, message: string) {
-    super(message);
-    this.code = code;
-    this.name = "ProviderError";
-  }
-}
 
 function wait(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -129,6 +124,8 @@ export function resolveProvider(
       return createHeuristicProvider();
     case "llm-pending":
       return createPendingLlmProvider();
+    case "http-chat":
+      return createHttpChatProviderFromEnv();
     case "fake":
     case "fake:ok":
       return createFakeProvider("ok");

@@ -2,49 +2,39 @@
 
 ## Problema
 
-Planos misturam passo útil com pressuposto, lacuna e risco. Uma “segunda opinião” que aprove ou execute o plano é perigosa. O recorte é protocolo JSON + CLI + bancada local, sem hook do Cursor e sem modelo real.
+Planos misturam passo útil com pressuposto e risco. Recorte: JSON + CLI + bancada, depois HTTP configurável e MCP stdio **manual**. Sem hook Plan→Build (não documentado como integração automática nas fontes oficiais consultadas em 2026-11-10).
 
-Inspiração de problema: [jrlucas1/claude-critique-hook](https://github.com/jrlucas1/claude-critique-hook) (João Raul). `license: null`; **nenhum trecho reutilizado.**
+Inspiração de problema: [jrlucas1/claude-critique-hook](https://github.com/jrlucas1/claude-critique-hook). Licença não identificada; código próprio.
 
-## Solução neste MVP
+## Solução actual
 
-1. Contrato tipado com origem explícita do trecho (`sourceKind` / `sourceId` / `proofKind`).
-2. `runCritique` com limites, retries, timeout, abort.
-3. Crítico heurístico determinístico (e-commerce frontend sintético).
-4. Provedores fake e `llm-pending` (falha local).
-5. Sanitização: o `citedEvidence` tem de ser substring da **origem declarada** (passo, restrição, evidência, objetivo ou contexto) — não de um excerpt arbitrário.
-6. CLI: JSON no stdout, resumo no stderr.
-7. Bancada web local.
+1. Contrato com `sourceKind` / `sourceId` / `proofKind`.
+2. Heurística determinística (e-commerce sintético). Fixture ruim → **7 achados** neste recorte (dinâmico).
+3. `http-chat`: Chat Completions OpenAI-compatible + dialecto Ollama. **Desligado por omissão.** Sem fallback para heurística.
+4. MCP stdio JSON-RPC, ferramenta `critique_plan`.
+5. CLI + GUI inalterados no papel: não executam o plano.
 
-`proofKind=observed-excerpt`: o trecho contém o comportamento afirmado.  
-`proofKind=inferred-absence`: o trecho é só o contexto observado; a omissão é hipótese.  
-**Validação estrutural não prova relevância semântica de modelo.**
+## Histórico de correcções (preservado)
 
-## Decisões
+- Auth no blob da evidência; cartão no passo de teste; `tsc` com `.ts` imports.
+- Achados BAD citavam `e1` catálogo (“não descreve cartão”). Âncora passou a passo/restrição.
+- Relatório UI só tinha marcação; passou a Chrome Tab/atalhos.
+- Banner sticky cobria JSON.
+- **v2:** provider HTTP + MCP; loopback mock ≠ LLM; BAD alinhado a 7.
 
-- Não “corrigir” as fixtures para o catálogo `e1` falar de cartão: o catálogo continua irrelevante, e os achados passaram a citar o passo/restrição certos.
-- TypeScript/Node; runtime só da biblioteca padrão. `puppeteer-core` é **devDependency** para testes de teclado no Chrome do sistema, não para o crítico.
-- UI sem CDN. Origin draft como fonte. Sem deploy.
+## Decisões v2
 
-## Falhas encontradas
+- Um adaptador Chat Completions cobre OpenAI e Ollama `/v1` (docs oficiais).
+- MCP implementado em JSON-RPC próprio (spec), sem instalar plugin na conta do utilizador.
+- Credencial só via nome de env; testes usam `Bearer test-token-not-a-secret`.
+- Fixtures **não** maquilhadas para mudar a contagem.
 
-1. Achados BAD citavam `e1` (catálogo) porque `pickEvidence(/cartão/)` casava com “Não descreve … cartão”. Substring em evidência genérica não é prova. Corrigido: âncora obrigatória na origem relevante; sem fallback para `evidence[0]`.
-2. Relatório de UI só provava marcação HTML. Corrigido: Chrome real com Tab, setas, Alt+R, Enter em erro, overflow 390px e contraste simples do stamp.
-3. Heurística de auth escolhia `s2` (menciona “próximo pagamento”). Apertada para o passo de processar/capturar (`s3`).
-4. Banner de erro sticky cobria JSON; passou a bloco estático.
-5. `page.evaluate` com função interna quebrou no tsx (`__name is not defined`); o teste de contraste passou a string.
+## FIXED / GOOD
 
-## FIXED neste recorte
+Zero achados neste recorte heurístico. **Não é acurácia.**
 
-`fixtures/ecommerce-fixed.json` produz **zero achados** na heurística atual. Isso **não** é métrica de precisão nem ausência de falso positivo noutros vocabulários.
+## Limitações / bloqueio
 
-## Limitações
+E2E com modelo real e host real **não feito**. Ver `docs/INTEGRATION-PLAN.md`.
 
-- Heurística frágil fora das fixtures.
-- Sem axe-core nem leitor de tela.
-- Mobile é emulação 390×844, não aparelho físico.
-- Integração com modelo real pendente. Sem hook/Plan Mode.
-
-## Status
-
-**MVP local com integração de modelo real pendente.**
+**Status: parcial até E2E com modelo real e host real aprovado.**

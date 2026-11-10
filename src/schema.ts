@@ -89,7 +89,7 @@ export const critiqueOutputSchema = {
   properties: {
     status: { enum: ["ok", "unavailable", "invalid", "input_error"] },
     criticKind: {
-      enum: ["heuristic-deterministic", "replay", "fake", "unavailable"],
+      enum: ["heuristic-deterministic", "replay", "fake", "unavailable", "http-chat"],
     },
     disclaimer: { type: "string" },
     error: {
@@ -119,7 +119,7 @@ export const critiqueOutputSchema = {
       properties: {
         providerId: { type: "string" },
         criticKind: {
-          enum: ["heuristic-deterministic", "replay", "fake", "unavailable"],
+          enum: ["heuristic-deterministic", "replay", "fake", "unavailable", "http-chat"],
         },
         callsUsed: { type: "integer", minimum: 0 },
         maxCalls: { type: "integer", minimum: 0 },

@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "critica-de-planos": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["tsx", "src/mcp-stdio.ts"],
+      "env": {
+        "CRITICA_MCP_PROVIDER": "heuristic"
+      }
+    }
+  }
+}

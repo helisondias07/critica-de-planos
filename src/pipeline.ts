@@ -1,20 +1,7 @@
 import type { CritiqueResult, RunOptions } from "./contract.js";
 import { DEFAULTS, DISCLAIMER } from "./defaults.js";
+import { isAbortError, messageOf, ProviderError } from "./errors.js";
 import { InputValidationError, sanitizeProviderOutput, validatePlanInput } from "./validate.js";
-
-function isAbortError(err: unknown): boolean {
-  return (
-    typeof err === "object" &&
-    err !== null &&
-    "name" in err &&
-    (err as { name: string }).name === "AbortError"
-  );
-}
-
-function messageOf(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  return String(err);
-}
 
 function emptyMeta(options: RunOptions, extra: Partial<CritiqueResult["meta"]> = {}): CritiqueResult["meta"] {
   return {
@@ -27,6 +14,9 @@ function emptyMeta(options: RunOptions, extra: Partial<CritiqueResult["meta"]> =
     aborted: false,
     droppedFindings: 0,
     ignoredUnexpectedFields: [],
+    model: options.provider.model,
+    endpointHost: options.provider.endpointHost,
+    transport: options.provider.transport,
     ...extra,
   };
 }
@@ -89,6 +79,7 @@ export async function runCritique(raw: unknown, options: RunOptions): Promise<Cr
   let timedOut = false;
   let aborted = false;
   let lastError = "crítico indisponível";
+  let lastCode = "PROVIDER_UNAVAILABLE";
 
   const cleanup = () => {
     for (const t of timers) clearTimeout(t);
@@ -143,6 +134,9 @@ export async function runCritique(raw: unknown, options: RunOptions): Promise<Cr
               aborted: false,
               droppedFindings: sanitized.droppedFindings,
               ignoredUnexpectedFields: sanitized.ignoredUnexpectedFields,
+              model: options.provider.model,
+              endpointHost: options.provider.endpointHost,
+              transport: options.provider.transport,
             },
           };
         }
@@ -162,11 +156,15 @@ export async function runCritique(raw: unknown, options: RunOptions): Promise<Cr
             aborted: false,
             droppedFindings: sanitized.droppedFindings,
             ignoredUnexpectedFields: sanitized.ignoredUnexpectedFields,
+            model: options.provider.model,
+            endpointHost: options.provider.endpointHost,
+            transport: options.provider.transport,
           },
         };
       } catch (err) {
         clearTimeout(attemptTimer);
         lastError = messageOf(err);
+        if (err instanceof ProviderError) lastCode = err.code;
         if (isAbortError(err) || totalController.signal.aborted || attemptController.signal.aborted) {
           timedOut = true;
           aborted = totalController.signal.aborted || attemptController.signal.aborted;
@@ -174,13 +172,14 @@ export async function runCritique(raw: unknown, options: RunOptions): Promise<Cr
       }
     }
 
+    const blockReason = lastCode === "NOT_CONFIGURED" ? "not_configured" : undefined;
     return {
       status: "unavailable",
       criticKind: options.provider.kind === "unavailable" ? "unavailable" : options.provider.kind,
       disclaimer,
       findings: [],
       error: {
-        code: timedOut || aborted ? "TIMEOUT_OR_ABORT" : "PROVIDER_UNAVAILABLE",
+        code: timedOut || aborted ? "TIMEOUT_OR_ABORT" : lastCode,
         message: lastError,
       },
       meta: {
@@ -193,6 +192,10 @@ export async function runCritique(raw: unknown, options: RunOptions): Promise<Cr
         aborted,
         droppedFindings: 0,
         ignoredUnexpectedFields: [],
+        model: options.provider.model,
+        endpointHost: options.provider.endpointHost,
+        transport: options.provider.transport,
+        blockReason,
       },
     };
   } finally {

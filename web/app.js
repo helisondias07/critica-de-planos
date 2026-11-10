@@ -168,7 +168,7 @@ async function runCritique(payload) {
     lastResult = data;
     const tone = data.status === "ok" ? "ok" : "bad";
     runStatus.className = `status ${tone}`;
-    runStatus.textContent = `status ${data.status} · ${data.criticKind} · ${data.findings?.length ?? 0} achados · NÃO é LLM`;
+    runStatus.textContent = `status ${data.status} · ${data.criticKind} · ${data.findings?.length ?? 0} achados · transport=${data.meta?.transport ?? "n/a"} · NÃO executar`;
     renderAchados(data);
     if (payload.input) renderEntrada(payload.input);
     if (data.status === "input_error") {

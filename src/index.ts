@@ -10,6 +10,8 @@ export {
   createReplayProvider,
   resolveProvider,
 } from "./providers.js";
+export { createHttpChatProvider, httpChatConfigFromEnv } from "./http-chat.js";
+export { handleMcpMessage, MCP_PROTOCOL_VERSION } from "./mcp-server.js";
 export { planInputSchema, critiqueOutputSchema, findingSchema } from "./schema.js";
 export { formatSummary } from "./format.js";
 export { parseArgs, runCli, HELP } from "./cli.js";

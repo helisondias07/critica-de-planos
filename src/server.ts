@@ -71,7 +71,9 @@ export function createAppServer(): Server {
           ok: true,
           critic: "heuristic-deterministic",
           llm: false,
+          llmEnabled: process.env.CRITICA_LLM_ENABLED === "true",
           hooks: false,
+          mcp: "stdio critique_plan (manual)",
           status: "MVP local com integração de modelo real pendente",
         });
         return;
