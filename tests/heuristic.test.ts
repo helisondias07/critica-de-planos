@@ -26,7 +26,7 @@ describe("heurística determinística (não é LLM)", () => {
     for (const f of result.findings) {
       assert.match(f.stepId, /^s[0-9]+$/);
       assert.ok(["step", "constraint", "evidence", "context", "objective"].includes(f.sourceKind));
-      assert.ok(f.citedEvidence.length >= 8);
+      assert.ok(f.citedEvidence.length >= 16);
       assert.ok(f.verificationAction.length >= 8);
       assert.ok(f.hypothesis.length >= 8);
     }

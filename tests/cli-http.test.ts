@@ -79,11 +79,15 @@ describe("HTTP local", () => {
     await new Promise<void>((resolve) => server.close(() => resolve()));
   });
 
-  it("health declara ausência de LLM e hooks", async () => {
+  it("health declara ausência de LLM e hooks e stamp real", async () => {
     const res = await fetch(`${base}/api/health`);
     const body = await res.json();
     assert.equal(body.llm, false);
     assert.equal(body.hooks, false);
+    assert.equal(body.httpChat.transport, "not-configured");
+    assert.equal(body.httpChat.configured, false);
+    assert.match(body.stamp.state, /não configurado/);
+    assert.equal(body.stamp.transport, "not-configured");
   });
 
   it("página inicial traz stamp de heurística e skip link", async () => {
@@ -92,6 +96,8 @@ describe("HTTP local", () => {
     assert.equal(res.headers.get("content-type")?.includes("text/html"), true);
     assert.match(html, /Saltar para o conteúdo/);
     assert.match(html, /NÃO é segundo LLM/);
+    assert.match(html, /id="runtime-stamp"/);
+    assert.match(html, /id="stamp-state"/);
     assert.match(html, /role="tablist"/);
     assert.match(html, /role="alert"/);
   });

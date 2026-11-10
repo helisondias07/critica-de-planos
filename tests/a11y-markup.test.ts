@@ -17,6 +17,8 @@ describe("marcação da bancada (a11y estática)", () => {
     assert.match(html, /aria-label="Seções da bancada"/);
     assert.match(html, /aria-live="polite"/);
     assert.match(html, /role="alert"/);
+    assert.match(html, /id="runtime-stamp"/);
+    assert.match(html, /id="stamp-state"/);
     assert.match(html, /<dialog id="help-dialog"/);
   });
 

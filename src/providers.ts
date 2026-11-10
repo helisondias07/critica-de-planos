@@ -1,7 +1,8 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import type {
   CritiqueProvider,
   CriticKind,
-  PlanInput,
   ProviderRequest,
   RawProviderOutput,
 } from "./contract.js";
@@ -115,17 +116,38 @@ export function createPendingLlmProvider(): CritiqueProvider {
   };
 }
 
+export interface ResolveProviderOptions {
+  replayFile?: string;
+  env?: NodeJS.ProcessEnv;
+}
+
+export function loadReplayRecording(path: string): RawProviderOutput {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(readFileSync(resolve(path), "utf8"));
+  } catch (err) {
+    throw new Error(
+      `replay: não foi possível ler a gravação ${path}: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+  if (!raw || typeof raw !== "object" || !Array.isArray((raw as { findings?: unknown }).findings)) {
+    throw new Error("replay: gravação inválida (objeto com findings[] obrigatório)");
+  }
+  return raw as RawProviderOutput;
+}
+
 export function resolveProvider(
   name: string,
-  inputForReplay?: PlanInput,
+  options: ResolveProviderOptions = {},
 ): CritiqueProvider {
+  const env = options.env ?? process.env;
   switch (name) {
     case "heuristic":
       return createHeuristicProvider();
     case "llm-pending":
       return createPendingLlmProvider();
     case "http-chat":
-      return createHttpChatProviderFromEnv();
+      return createHttpChatProviderFromEnv(env);
     case "fake":
     case "fake:ok":
       return createFakeProvider("ok");
@@ -137,9 +159,15 @@ export function resolveProvider(
       return createFakeProvider("invalid");
     case "fake:invented":
       return createFakeProvider("invented");
-    case "replay":
-      if (!inputForReplay) return createReplayProvider({ findings: [] });
-      return createReplayProvider(runHeuristic(inputForReplay));
+    case "replay": {
+      const path = options.replayFile ?? env.CRITICA_REPLAY_PATH;
+      if (!path) {
+        throw new Error(
+          "replay sem gravação: defina --replay-file ou CRITICA_REPLAY_PATH. Recusa sucesso vazio.",
+        );
+      }
+      return createReplayProvider(loadReplayRecording(path));
+    }
     default:
       if (name.startsWith("fake:")) {
         return createFakeProvider(name.slice(5) as FakeMode);

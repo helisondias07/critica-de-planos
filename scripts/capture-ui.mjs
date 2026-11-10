@@ -5,6 +5,7 @@
 import puppeteer from "puppeteer-core";
 import { mkdirSync } from "node:fs";
 
+const suffix = process.env.SHOT_SUFFIX ?? "-v3";
 const out = process.env.ARTIFACT_DIR ?? "/opt/cursor/artifacts";
 mkdirSync(out, { recursive: true });
 const chrome = process.env.CHROME ?? "/usr/bin/google-chrome-stable";
@@ -26,19 +27,27 @@ try {
   const desktop = await browser.newPage();
   await desktop.setViewport({ width: 1280, height: 800, deviceScaleFactor: 1 });
   await desktop.goto(url, { waitUntil: "networkidle0" });
-  await shot(desktop, "ui-desktop-bancada.png");
+  await desktop.waitForFunction(
+    () => !(document.getElementById("stamp-state")?.textContent ?? "").includes("A carregar"),
+    { timeout: 8000 },
+  );
+  await shot(desktop, `ui-desktop-bancada${suffix}.png`);
 
   await desktop.click("#tab-exemplos");
   await desktop.waitForSelector("#plan-preview");
   await new Promise((r) => setTimeout(r, 250));
-  await shot(desktop, "ui-desktop-exemplos-ruim.png");
+  await shot(desktop, `ui-desktop-exemplos-ruim${suffix}.png`);
 
   await desktop.click("#run-btn");
   await desktop.waitForFunction(
     () => document.querySelector("#insp-achados")?.textContent?.includes("F01"),
     { timeout: 8000 },
   );
-  await shot(desktop, "ui-desktop-inspecao-ruim.png");
+  const inspectionText = await desktop.evaluate(() => document.querySelector("#insp-achados")?.textContent ?? "");
+  if (!inspectionText.includes("Ausência inferida")) {
+    throw new Error("screenshot: expected inferred-absence label");
+  }
+  await shot(desktop, `ui-desktop-inspecao-ruim${suffix}.png`);
 
   await desktop.click("#tab-exemplos");
   await desktop.select("#fixture-select", "ecommerce-good.json");
@@ -48,7 +57,7 @@ try {
     () => document.querySelector("#run-status")?.textContent?.includes("status ok"),
     { timeout: 8000 },
   );
-  await shot(desktop, "ui-desktop-inspecao-bom.png");
+  await shot(desktop, `ui-desktop-inspecao-bom${suffix}.png`);
 
   await desktop.click("#tab-falhas");
   await (await desktop.$('[data-lab="timeout"]')).click();
@@ -56,14 +65,14 @@ try {
     () => document.querySelector("#lab-out")?.textContent?.includes("unavailable"),
     { timeout: 8000 },
   );
-  await shot(desktop, "ui-desktop-falhas-timeout.png");
+  await shot(desktop, `ui-desktop-falhas-timeout${suffix}.png`);
 
   await (await desktop.$('[data-lab="invalid"]')).click();
   await desktop.waitForFunction(
     () => document.querySelector("#lab-out")?.textContent?.includes("invalid"),
     { timeout: 8000 },
   );
-  await shot(desktop, "ui-desktop-falhas-invalid.png");
+  await shot(desktop, `ui-desktop-falhas-invalid${suffix}.png`);
 
   const mobile = await browser.newPage();
   await mobile.setViewport({
@@ -74,7 +83,11 @@ try {
     hasTouch: true,
   });
   await mobile.goto(url, { waitUntil: "networkidle0" });
-  await shot(mobile, "ui-mobile-bancada.png");
+  await mobile.waitForFunction(
+    () => !(document.getElementById("stamp-state")?.textContent ?? "").includes("A carregar"),
+    { timeout: 8000 },
+  );
+  await shot(mobile, `ui-mobile-bancada${suffix}.png`);
   await mobile.click("#tab-exemplos");
   await new Promise((r) => setTimeout(r, 200));
   await mobile.click("#run-btn");
@@ -82,7 +95,7 @@ try {
     () => document.querySelector("#insp-achados")?.textContent?.includes("F01"),
     { timeout: 8000 },
   );
-  await shot(mobile, "ui-mobile-inspecao.png");
+  await shot(mobile, `ui-mobile-inspecao${suffix}.png`);
   await mobile.click("#tab-falhas");
   await (await mobile.$('[data-lab="malformed"]')).click();
   await mobile.waitForFunction(
@@ -91,7 +104,7 @@ try {
       (document.querySelector("#lab-out")?.textContent ?? "").includes("input_error"),
     { timeout: 8000 },
   );
-  await shot(mobile, "ui-mobile-erro.png");
+  await shot(mobile, `ui-mobile-erro${suffix}.png`);
 } finally {
   await browser.close();
 }

@@ -14,7 +14,7 @@ import {
   type SourceKind,
 } from "./contract.js";
 import { DEFAULTS } from "./defaults.js";
-import { quoteContains, resolveSourceText } from "./source.js";
+import { MIN_QUOTE_CHARS, quoteContains, resolveSourceText } from "./source.js";
 
 export class InputValidationError extends Error {
   readonly code = "INPUT_ERROR";
@@ -236,7 +236,7 @@ export function sanitizeProviderOutput(
       title.length <= 200 &&
       hypothesis.length >= 8 &&
       hypothesis.length <= DEFAULTS.maxStringChars &&
-      citedEvidence.length >= 8 &&
+      citedEvidence.length >= MIN_QUOTE_CHARS &&
       citedEvidence.length <= DEFAULTS.maxStringChars &&
       verificationAction.length >= 8 &&
       verificationAction.length <= DEFAULTS.maxStringChars &&

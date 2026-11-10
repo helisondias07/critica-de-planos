@@ -1,8 +1,10 @@
 import type { CritiqueProvider, ProviderRequest, RawProviderOutput } from "./contract.js";
+import { parsePositiveIntEnv } from "./config-number.js";
 import { DEFAULTS } from "./defaults.js";
 import { ProviderError } from "./errors.js";
 import { buildUntrustedPlanUserMessage, CRITIC_SYSTEM_PROMPT, FINDINGS_JSON_SCHEMA, parseModelContent } from "./prompt.js";
 import { endpointHost, logLine, redactHeaderValue } from "./redact.js";
+import { parseRetryAfterHeader } from "./retry-after.js";
 
 export type HttpChatDialect = "openai-chat-completions" | "ollama-chat";
 
@@ -27,6 +29,8 @@ export const HTTP_CHAT_DEFAULTS = {
   timeoutMs: 8000,
   maxResponseBytes: 65_536,
   dialect: "openai-chat-completions" as HttpChatDialect,
+  maxTokensCap: 32_000,
+  timeoutMsCap: 120_000,
 };
 
 export function httpChatConfigFromEnv(env: NodeJS.ProcessEnv = process.env): HttpChatConfig {
@@ -40,8 +44,18 @@ export function httpChatConfigFromEnv(env: NodeJS.ProcessEnv = process.env): Htt
     endpoint: (env.CRITICA_LLM_ENDPOINT ?? "").trim(),
     model: (env.CRITICA_LLM_MODEL ?? "").trim(),
     apiKeyEnvName: keyName || undefined,
-    maxTokens: Number(env.CRITICA_LLM_MAX_TOKENS) || HTTP_CHAT_DEFAULTS.maxTokens,
-    timeoutMs: Number(env.CRITICA_LLM_TIMEOUT_MS) || HTTP_CHAT_DEFAULTS.timeoutMs,
+    maxTokens: parsePositiveIntEnv(
+      env.CRITICA_LLM_MAX_TOKENS,
+      "CRITICA_LLM_MAX_TOKENS",
+      HTTP_CHAT_DEFAULTS.maxTokens,
+      HTTP_CHAT_DEFAULTS.maxTokensCap,
+    ),
+    timeoutMs: parsePositiveIntEnv(
+      env.CRITICA_LLM_TIMEOUT_MS,
+      "CRITICA_LLM_TIMEOUT_MS",
+      HTTP_CHAT_DEFAULTS.timeoutMs,
+      HTTP_CHAT_DEFAULTS.timeoutMsCap,
+    ),
     maxResponseBytes: DEFAULTS.maxInputBytes,
     loopbackMock: false,
   };
@@ -112,11 +126,48 @@ function extractContent(dialect: HttpChatDialect, json: unknown): string {
   throw new ProviderError("INVALID_OUTPUT", "resposta chat/completions sem message.content");
 }
 
+export function isHttpChatConfigured(config: HttpChatConfig): boolean {
+  return Boolean(config.enabled && config.endpoint && config.model);
+}
+
+function transportOf(config: HttpChatConfig): string {
+  if (config.loopbackMock) return "loopback-mock";
+  if (!isHttpChatConfigured(config)) return "not-configured";
+  return "configured-http";
+}
+
+function throwForHttpStatus(status: number, retryAfterHeader: string | null): never {
+  if (status === 401 || status === 403) {
+    throw new ProviderError("PROVIDER_UNAVAILABLE", `HTTP ${status} no endpoint de crítica (não executar plano)`, {
+      httpStatus: status,
+      retryable: false,
+    });
+  }
+  if (status === 429) {
+    const retryAfterMs = parseRetryAfterHeader(retryAfterHeader);
+    throw new ProviderError("PROVIDER_UNAVAILABLE", "HTTP 429 no endpoint de crítica (não executar plano)", {
+      httpStatus: 429,
+      retryable: retryAfterMs !== undefined,
+      retryAfterMs,
+    });
+  }
+  if (status >= 500) {
+    throw new ProviderError("PROVIDER_UNAVAILABLE", `HTTP ${status} no endpoint de crítica (não executar plano)`, {
+      httpStatus: status,
+      retryable: true,
+    });
+  }
+  throw new ProviderError("PROVIDER_UNAVAILABLE", `HTTP ${status} no endpoint de crítica`, {
+    httpStatus: status,
+    retryable: false,
+  });
+}
+
 export function createHttpChatProvider(config: HttpChatConfig): CritiqueProvider {
   const host = config.endpoint ? endpointHost(config.endpoint) : "";
   const kind = config.loopbackMock ? "fake" : "http-chat";
   const id = config.loopbackMock ? "http-mock" : "http-chat";
-  const transport = config.loopbackMock ? "loopback-mock" : "configured-http";
+  const transport = transportOf(config);
 
   return {
     id,
@@ -125,7 +176,7 @@ export function createHttpChatProvider(config: HttpChatConfig): CritiqueProvider
     endpointHost: host || undefined,
     transport,
     async critique(request: ProviderRequest): Promise<RawProviderOutput> {
-      if (!config.enabled || !config.endpoint || !config.model) {
+      if (!isHttpChatConfigured(config)) {
         throw new ProviderError(
           "NOT_CONFIGURED",
           "http-chat desabilitado ou sem endpoint/model. Defina CRITICA_LLM_ENABLED=true, CRITICA_LLM_ENDPOINT e CRITICA_LLM_MODEL. Sem fallback para heurística.",
@@ -176,14 +227,8 @@ export function createHttpChatProvider(config: HttpChatConfig): CritiqueProvider
         throw new ProviderError("PROVIDER_UNAVAILABLE", `falha de transporte HTTP: ${(err as Error).message}`);
       }
 
-      if (response.status === 429 || response.status >= 500) {
-        throw new ProviderError(
-          "PROVIDER_UNAVAILABLE",
-          `HTTP ${response.status} no endpoint de crítica (não executar plano)`,
-        );
-      }
       if (!response.ok) {
-        throw new ProviderError("PROVIDER_UNAVAILABLE", `HTTP ${response.status} no endpoint de crítica`);
+        throwForHttpStatus(response.status, response.headers.get("retry-after"));
       }
 
       const text = await response.text();
@@ -196,12 +241,7 @@ export function createHttpChatProvider(config: HttpChatConfig): CritiqueProvider
       } catch {
         throw new ProviderError("INVALID_OUTPUT", "resposta HTTP não é JSON");
       }
-      let content: string;
-      try {
-        content = extractContent(config.dialect, parsedJson);
-      } catch (err) {
-        throw err;
-      }
+      const content = extractContent(config.dialect, parsedJson);
       try {
         const findingsDoc = parseModelContent(content, config.maxResponseBytes);
         if (!findingsDoc || typeof findingsDoc !== "object") {
@@ -217,4 +257,32 @@ export function createHttpChatProvider(config: HttpChatConfig): CritiqueProvider
 
 export function createHttpChatProviderFromEnv(env: NodeJS.ProcessEnv = process.env): CritiqueProvider {
   return createHttpChatProvider(httpChatConfigFromEnv(env));
+}
+
+export function describeHttpChatRuntime(env: NodeJS.ProcessEnv = process.env): {
+  enabled: boolean;
+  configured: boolean;
+  transport: string;
+  dialect: HttpChatDialect;
+  model: string;
+} {
+  try {
+    const config = httpChatConfigFromEnv(env);
+    const configured = isHttpChatConfigured(config);
+    return {
+      enabled: config.enabled,
+      configured,
+      transport: transportOf(config),
+      dialect: config.dialect,
+      model: config.model,
+    };
+  } catch {
+    return {
+      enabled: false,
+      configured: false,
+      transport: "not-configured",
+      dialect: "openai-chat-completions",
+      model: "",
+    };
+  }
 }

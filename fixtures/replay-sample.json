@@ -1,0 +1,17 @@
+{
+  "findings": [
+    {
+      "id": "F01",
+      "severity": "low",
+      "category": "gap",
+      "stepId": "s1",
+      "sourceKind": "step",
+      "sourceId": "s1",
+      "proofKind": "observed-excerpt",
+      "title": "gravação de replay",
+      "hypothesis": "este achado veio de um arquivo de replay, não de um LLM",
+      "citedEvidence": "Não deve ser executado",
+      "verificationAction": "confirmar que o replay leu findings[] do arquivo"
+    }
+  ]
+}

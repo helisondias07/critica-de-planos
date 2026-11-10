@@ -98,7 +98,11 @@ describe("teclado real no Chrome (não é axe/leitor de tela)", { timeout: 90_00
     );
     const body = await page.evaluate(() => document.querySelector("#insp-achados")?.textContent ?? "");
     assert.match(body, /observed-excerpt/);
+    assert.match(body, /Ausência inferida \(contexto observado/);
     assert.doesNotMatch(body, /origem evidence:e1/);
+    const stamp = await page.evaluate(() => document.getElementById("stamp-state")?.textContent ?? "");
+    assert.match(stamp, /transport=/);
+    assert.doesNotMatch(stamp, /A carregar estado real/);
     await page.close();
   });
 

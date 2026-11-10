@@ -106,6 +106,13 @@ function renderEvidencias(plan) {
   }
 }
 
+function proofQuoteLabel(kind) {
+  if (kind === "inferred-absence") {
+    return "Ausência inferida (contexto observado; não prova o que falta)";
+  }
+  return "Trecho observado na origem declarada";
+}
+
 function renderAchados(result) {
   const root = document.getElementById("insp-achados");
   root.replaceChildren();
@@ -115,7 +122,7 @@ function renderAchados(result) {
   }
   const head = document.createElement("p");
   head.className = "meta";
-  head.textContent = `status=${result.status} · ${result.criticKind} · provider=${result.meta?.providerId} · achados=${result.findings?.length ?? 0}`;
+  head.textContent = `status=${result.status} · ${result.criticKind} · provider=${result.meta?.providerId} · transport=${result.meta?.transport ?? "n/a"} · achados=${result.findings?.length ?? 0}`;
   root.append(head);
   if (result.error) {
     const err = document.createElement("div");
@@ -135,14 +142,40 @@ function renderAchados(result) {
   for (const f of result.findings) {
     const card = document.createElement("article");
     card.className = `card sev-${f.severity}`;
+    const quoteLabel = proofQuoteLabel(f.proofKind);
     card.innerHTML = `
       <h3>${escapeHtml(f.id)} · ${escapeHtml(f.title)}</h3>
       <p class="meta">${escapeHtml(f.severity)} / ${escapeHtml(f.category)} · ${escapeHtml(f.proofKind)} · passo ${escapeHtml(f.stepId)} · origem ${escapeHtml(f.sourceKind)}:${escapeHtml(f.sourceId)}</p>
       <p><strong>Hipótese.</strong> ${escapeHtml(f.hypothesis)}</p>
-      <p><strong>Trecho observado.</strong> ${escapeHtml(f.citedEvidence)}</p>
+      <p><strong>${escapeHtml(quoteLabel)}.</strong> ${escapeHtml(f.citedEvidence)}</p>
       <p><strong>Verificação.</strong> ${escapeHtml(f.verificationAction)}</p>
       <p class="meta">Não executar esta verificação automaticamente.</p>`;
     root.append(card);
+  }
+}
+
+function applyStamp(stamp) {
+  const root = document.getElementById("runtime-stamp");
+  const kind = document.getElementById("stamp-kind");
+  const state = document.getElementById("stamp-state");
+  if (!root || !kind || !state || !stamp) return;
+  kind.textContent = stamp.kind;
+  state.textContent = stamp.state;
+  root.dataset.transport = stamp.transport ?? "unknown";
+}
+
+async function loadStamp() {
+  try {
+    const res = await fetch("/api/health");
+    if (!res.ok) throw new Error("health");
+    const data = await res.json();
+    applyStamp(data.stamp);
+  } catch {
+    applyStamp({
+      kind: "Heurística determinística / replay / fake",
+      state: "Status: parcial · stamp do servidor indisponível · http-chat tratado como não configurado",
+      transport: "unknown",
+    });
   }
 }
 
@@ -169,6 +202,12 @@ async function runCritique(payload) {
     const tone = data.status === "ok" ? "ok" : "bad";
     runStatus.className = `status ${tone}`;
     runStatus.textContent = `status ${data.status} · ${data.criticKind} · ${data.findings?.length ?? 0} achados · transport=${data.meta?.transport ?? "n/a"} · NÃO executar`;
+    const stampState = document.getElementById("stamp-state");
+    const stampRoot = document.getElementById("runtime-stamp");
+    if (stampState && data.meta?.transport) {
+      stampState.textContent = `Última crítica: status=${data.status} · criticKind=${data.criticKind} · transport=${data.meta.transport} (servidor; não é LLM salvo http-chat habilitado)`;
+      if (stampRoot) stampRoot.dataset.transport = data.meta.transport;
+    }
     renderAchados(data);
     if (payload.input) renderEntrada(payload.input);
     if (data.status === "input_error") {
@@ -233,4 +272,5 @@ document.addEventListener("keydown", (event) => {
 document.getElementById("help-close").addEventListener("click", () => helpDialog.close());
 
 renderAchados(null);
+loadStamp();
 loadFixture();

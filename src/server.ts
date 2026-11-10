@@ -6,8 +6,10 @@ import { dirname } from "node:path";
 import { DEFAULTS } from "./defaults.js";
 import { listFixtureFiles, loadFixture, fixturesDir } from "./fixtures.js";
 import { runCritique } from "./pipeline.js";
+import { describeHttpChatRuntime } from "./http-chat.js";
 import { resolveProvider } from "./providers.js";
 import { critiqueOutputSchema, planInputSchema } from "./schema.js";
+import { PACKAGE_VERSION } from "./version.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const webDir = join(root, "web");
@@ -67,14 +69,26 @@ export function createAppServer(): Server {
       const url = new URL(req.url ?? "/", "http://127.0.0.1");
       const path = url.pathname;
       if (req.method === "GET" && path === "/api/health") {
+        const http = describeHttpChatRuntime();
+        const stampKind = "Heurística determinística / replay / fake (NÃO é segundo LLM)";
+        const stampState = http.configured
+          ? `Status: parcial · http-chat configurado (transport=${http.transport}, dialect=${http.dialect}) · MCP stdio manual (não é Plan→Build)`
+          : `Status: parcial · http-chat não configurado (transport=${http.transport}) · MCP stdio manual (não é Plan→Build)`;
         sendJson(res, 200, {
           ok: true,
+          version: PACKAGE_VERSION,
           critic: "heuristic-deterministic",
           llm: false,
-          llmEnabled: process.env.CRITICA_LLM_ENABLED === "true",
+          llmEnabled: http.enabled,
+          httpChat: http,
           hooks: false,
-          mcp: "stdio critique_plan (manual)",
-          status: "MVP local com integração de modelo real pendente",
+          mcp: "stdio critique_plan (manual; o host pode auto-invocar ferramentas — isso não é gate Plan→Build)",
+          status: "parcial até E2E com modelo real e host real aprovado",
+          stamp: {
+            kind: stampKind,
+            state: stampState,
+            transport: http.transport,
+          },
         });
         return;
       }

@@ -11,6 +11,7 @@ import { critiqueOutputSchema, planInputSchema } from "./schema.js";
 export interface CliFlags {
   inputPath?: string;
   provider: string;
+  replayFile?: string;
   jsonOnly: boolean;
   summaryOnly: boolean;
   help: boolean;
@@ -50,6 +51,9 @@ export function parseArgs(argv: string[]): CliFlags {
       case "--provider":
         flags.provider = next() ?? flags.provider;
         break;
+      case "--replay-file":
+        flags.replayFile = next();
+        break;
       case "--max-calls":
         flags.maxCalls = Number(next());
         break;
@@ -87,6 +91,7 @@ Uso:
 Flags:
   --input <arquivo.json>     Plano sintético (objective, steps, constraints, evidence)
   --provider heuristic|replay|fake|fake:timeout|fake:error|fake:invalid|fake:invented|llm-pending|http-chat
+  --replay-file <json>       gravação findings[] para --provider replay (ou CRITICA_REPLAY_PATH)
   --max-calls N              default ${DEFAULTS.maxCalls}
   --retries N                default ${DEFAULTS.maxRetries}
   --timeout-ms N             timeout total, default ${DEFAULTS.totalTimeoutMs}
@@ -167,7 +172,7 @@ export async function runCli(argv: string[], io = { stdout: process.stdout, stde
 
   let provider;
   try {
-    provider = resolveProvider(flags.provider);
+    provider = resolveProvider(flags.provider, { replayFile: flags.replayFile });
   } catch (err) {
     io.stderr.write(`${err instanceof Error ? err.message : String(err)}\n`);
     return 1;

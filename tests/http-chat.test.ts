@@ -64,6 +64,7 @@ describe("http-chat (loopback falso, NÃO é LLM)", () => {
     assert.equal(result.status, "unavailable");
     assert.equal(result.error?.code, "NOT_CONFIGURED");
     assert.equal(result.meta.blockReason, "not_configured");
+    assert.equal(result.meta.transport, "not-configured");
     assert.equal(result.findings.length, 0);
     assert.equal(result.criticKind, "http-chat");
   });
@@ -97,16 +98,16 @@ describe("http-chat (loopback falso, NÃO é LLM)", () => {
     const a = await runMode("http429");
     servers.push(a.server);
     assert.equal(a.result.status, "unavailable");
-    assert.match(a.result.error?.message ?? "", /429/);
+    assert.match(a.result.error?.message ?? "", /429|Retry-After/);
     const b = await runMode("http500");
     servers.push(b.server);
     assert.match(b.result.error?.message ?? "", /500/);
   });
 
-  it("JSON malformado vira invalid ou unavailable sem achados", async () => {
+  it("JSON malformado vira invalid sem achados", async () => {
     const { server, result } = await runMode("malformed");
     servers.push(server);
-    assert.ok(result.status === "invalid" || result.status === "unavailable");
+    assert.equal(result.status, "invalid");
     assert.equal(result.findings.length, 0);
   });
 

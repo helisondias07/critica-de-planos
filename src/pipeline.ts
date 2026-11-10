@@ -21,6 +21,21 @@ function emptyMeta(options: RunOptions, extra: Partial<CritiqueResult["meta"]> =
   };
 }
 
+function sleep(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) {
+      reject(Object.assign(new Error("aborted"), { name: "AbortError" }));
+      return;
+    }
+    const timer = setTimeout(resolve, ms);
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(Object.assign(new Error("aborted"), { name: "AbortError" }));
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
 export async function runCritique(raw: unknown, options: RunOptions): Promise<CritiqueResult> {
   const pick = (value: number | undefined, fallback: number) =>
     typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : fallback;
@@ -63,6 +78,7 @@ export async function runCritique(raw: unknown, options: RunOptions): Promise<Cr
 
   const totalController = new AbortController();
   const timers: ReturnType<typeof setTimeout>[] = [];
+  const startedAt = Date.now();
 
   const abortTotal = () => totalController.abort();
   timers.push(setTimeout(abortTotal, totalTimeoutMs));
@@ -84,6 +100,8 @@ export async function runCritique(raw: unknown, options: RunOptions): Promise<Cr
   const cleanup = () => {
     for (const t of timers) clearTimeout(t);
   };
+
+  const remainingMs = () => totalTimeoutMs - (Date.now() - startedAt);
 
   try {
     const attempts = Math.min(maxCalls, maxRetries + 1);
@@ -168,6 +186,72 @@ export async function runCritique(raw: unknown, options: RunOptions): Promise<Cr
         if (isAbortError(err) || totalController.signal.aborted || attemptController.signal.aborted) {
           timedOut = true;
           aborted = totalController.signal.aborted || attemptController.signal.aborted;
+        }
+
+        if (err instanceof ProviderError && err.code === "INVALID_OUTPUT") {
+          return {
+            status: "invalid",
+            criticKind: options.provider.kind,
+            disclaimer,
+            findings: [],
+            error: { code: "INVALID_OUTPUT", message: lastError },
+            meta: {
+              providerId: options.provider.id,
+              criticKind: options.provider.kind,
+              callsUsed,
+              maxCalls,
+              retriesUsed,
+              timedOut: false,
+              aborted: false,
+              droppedFindings: 0,
+              ignoredUnexpectedFields: [],
+              model: options.provider.model,
+              endpointHost: options.provider.endpointHost,
+              transport: options.provider.transport,
+            },
+          };
+        }
+
+        const retryable = err instanceof ProviderError ? err.retryable : !isAbortError(err);
+        if (!retryable || isAbortError(err)) {
+          break;
+        }
+
+        const waitMs = err instanceof ProviderError ? err.retryAfterMs : undefined;
+        const budget = remainingMs();
+        if (waitMs !== undefined) {
+          if (waitMs > budget) {
+            lastError = `HTTP 429: Retry-After ${waitMs}ms excede orçamento restante ${Math.max(0, budget)}ms`;
+            lastCode = "PROVIDER_UNAVAILABLE";
+            break;
+          }
+          if (i < attempts - 1 && waitMs > 0) {
+            try {
+              await sleep(waitMs, totalController.signal);
+            } catch (sleepErr) {
+              if (isAbortError(sleepErr)) {
+                timedOut = true;
+                aborted = true;
+                break;
+              }
+            }
+          }
+          continue;
+        }
+
+        if (i < attempts - 1 && budget > 50) {
+          const backoff = Math.min(100, Math.max(0, budget - 10));
+          if (backoff > 0) {
+            try {
+              await sleep(backoff, totalController.signal);
+            } catch (sleepErr) {
+              if (isAbortError(sleepErr)) {
+                timedOut = true;
+                aborted = true;
+                break;
+              }
+            }
+          }
         }
       }
     }

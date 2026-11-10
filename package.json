@@ -1,6 +1,6 @@
 {
   "name": "critica-de-planos",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Protocolo JSON + CLI para crítica heurística de planos. Não é segundo LLM e não executa o plano.",
   "type": "module",

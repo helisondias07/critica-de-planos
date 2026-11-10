@@ -2,7 +2,7 @@
 
 Experimento **local** em TypeScript/Node: protocolo JSON independente de host + CLI manual + bancada web na mesma máquina.
 
-**Status: MVP local com integração de modelo real pendente.** Não publicado, sem deploy, sem PR.
+**Status: parcial** (v0.3.0). Revisão independente do SHA `803eeb4` confirmou testes, mas **não aprovou**. Correções P1/P2 neste draft. Integração com modelo real e host real **ainda bloqueada**. Não publicado, sem deploy, sem PR.
 
 ## O que é (e o que não é)
 
@@ -22,7 +22,7 @@ O crítico padrão é **heurístico determinístico** (regras sobre o texto). Ta
 - **NÃO valida qualidade de IA.**
 - **NÃO é hook do Cursor, Plan Mode, nem integração automática Plan→Build.** Esses modos existem na documentação de produto; este recorte não os usa e não afirma compatibilidade.
 - **NÃO chama modelo real neste recorte** (`http-chat` existe mas fica `NOT_CONFIGURED` até o utilizador ligar endpoint+model+enable). Loopback de teste **não é LLM**.
-- Ponte MCP stdio (`npm run mcp`, ferramenta `critique_plan`) é chamada **manual**. Não é Plan→Build.
+- Ponte MCP stdio (`npm run mcp`, ferramenta `critique_plan`) é **ferramenta**. A documentação pública do Cursor (consultada 2026-11-10) diz que o agente **pode auto-invocar** ferramentas MCP quando relevantes, inclusive em Plan Mode, com aprovação por omissão. Isso **não** é um gate Plan→Build nem captura automática de planos. Não inventámos esse gancho.
 
 Inspiração (apenas o problema de “segunda opinião sobre um plano”), **sem reutilizar código**: [jrlucas1/claude-critique-hook](https://github.com/jrlucas1/claude-critique-hook) de João Raul. Consulta pública: `license: null`, sem arquivo LICENSE identificado. Tratado como **licença não identificada** — implementação própria.
 
@@ -54,6 +54,7 @@ npm run cli -- --input fixtures/timeout-lab.json --provider fake:invalid
 npm run cli -- --input fixtures/timeout-lab.json --provider fake:invented
 npm run cli -- --input fixtures/timeout-lab.json --max-calls 0
 npm run cli -- --input fixtures/ecommerce-bad.json --provider http-chat --retries 0
+npm run cli -- --input fixtures/timeout-lab.json --provider replay --replay-file fixtures/replay-sample.json
 npm run mcp
 npm run cli -- --schema
 npm run cli -- --help
@@ -61,7 +62,9 @@ npm run cli -- --help
 
 `http-chat` sem `CRITICA_LLM_ENABLED=true` sai `unavailable` / `NOT_CONFIGURED` e **não** corre a heurística.
 
-MCP: JSON-RPC newline na stdin/stdout. Exemplo de config de host (não instalado aqui): `docs/examples/cursor-mcp.json.example`, `docs/examples/claude-code.mcp.json.example`. Plano em `docs/INTEGRATION-PLAN.md`.
+`replay` **exige** `--replay-file` ou `CRITICA_REPLAY_PATH` com um JSON `{ "findings": [...] }`. Sem gravação a CLI sai com código 1 (não devolve 0 achados em silêncio).
+
+MCP: JSON-RPC newline na stdin/stdout. Parse inválido → `-32700`. Exemplo de config de host (não instalado aqui): `docs/examples/cursor-mcp.json.example` usa `node` + `${workspaceFolder}/dist/mcp-stdio.js` (interpolação documentada em [Cursor MCP](https://cursor.com/docs/mcp)). A tabela oficial STDIO **não lista `cwd`**; não foi inventado esse campo. `docs/examples/claude-code.mcp.json.example` para Claude Code. Plano em `docs/INTEGRATION-PLAN.md`. `critique_plan` devolve `isError: true` em `NOT_CONFIGURED` / `unavailable` / `invalid` / `input_error`.
 
 Bancada web local (sem CDN, sem rede de modelo):
 
@@ -139,7 +142,7 @@ Campos conhecidos (outros são **ignorados**):
 
 A saída **não é instrução confiável**. Campos extra do provedor são ignorados. Achado com `stepId` inexistente, `sourceId` inválido, ou `citedEvidence` que **não é substring da origem declarada** é descartado.
 
-Ser substring de *algum* campo do plano não basta: a origem (`sourceKind`/`sourceId`) tem de ser o texto que sustenta o risco. `proofKind=observed-excerpt` marca trecho que contém o comportamento; `inferred-absence` marca hipótese de omissão (o trecho citado é só o contexto observado). **A validação estrutural não prova relevância semântica de modelo nenhum.**
+Ser substring de *algum* campo do plano não basta: a origem (`sourceKind`/`sourceId`) tem de ser o texto que sustenta o risco. A citação passa por NFKC, tokens consecutivos (fronteira de palavra), mínimo 16 caracteres e 3 palavras; trechos triviais são rejeitados. **Isto não é relevância semântica.** `proofKind=observed-excerpt` marca trecho observado; `inferred-absence` é ausência inferida (o trecho é só contexto). A UI **não** rotula ausência inferida como “Trecho observado”.
 
 ## Limites: defaults vs overrides de demo
 
@@ -157,7 +160,7 @@ Defaults do núcleo (`src/defaults.ts`), usados por CLI/HTTP quando o chamador n
 
 Overrides **só** no laboratório da UI e em demos de timeout (não mudam o default): `attemptTimeoutMs=80`, `totalTimeoutMs=200`, `maxRetries=0`, e `maxCalls=0` no botão “Limite de chamadas”.
 
-Interface de provedor: `CritiqueProvider` em `src/contract.ts`. Implementações: heurística, fake (timeout/error/invalid/invented), replay, `llm-pending` (sempre unavailable; **sem integração real ativa**).
+Interface de provedor: `CritiqueProvider` em `src/contract.ts`. Implementações: heurística, fake (timeout/error/invalid/invented), replay (gravação obrigatória), `llm-pending` (sempre unavailable; **sem integração real ativa**), `http-chat` (desligado por omissão; `transport=not-configured` até enable+endpoint+model). JSON HTTP malformado → `invalid` **sem retry**. 401 nunca reintenta. 429 só com `Retry-After` que caiba no orçamento.
 
 ## Fixtures
 

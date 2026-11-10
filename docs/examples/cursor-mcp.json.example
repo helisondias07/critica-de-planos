@@ -2,8 +2,8 @@
   "mcpServers": {
     "critica-de-planos": {
       "type": "stdio",
-      "command": "npx",
-      "args": ["tsx", "src/mcp-stdio.ts"],
+      "command": "node",
+      "args": ["${workspaceFolder}/dist/mcp-stdio.js"],
       "env": {
         "CRITICA_MCP_PROVIDER": "heuristic"
       }

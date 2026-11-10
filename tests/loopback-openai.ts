@@ -5,15 +5,19 @@ export type LoopMode =
   | "ok"
   | "malformed"
   | "http429"
+  | "http429-then-ok"
+  | "http429-long"
   | "http500"
   | "timeout"
   | "injection"
   | "invented"
-  | "unauth";
+  | "unauth"
+  | "ollama-ok";
 
 export interface LoopbackState {
   lastAuth?: string;
   lastBody?: unknown;
+  lastUrl?: string;
   hits: number;
 }
 
@@ -22,6 +26,14 @@ export function openaiOkBody(content: unknown): string {
     id: "chatcmpl-mock",
     object: "chat.completion",
     choices: [{ index: 0, message: { role: "assistant", content: JSON.stringify(content) } }],
+  });
+}
+
+export function ollamaOkBody(content: unknown): string {
+  return JSON.stringify({
+    model: "mock-ollama",
+    message: { role: "assistant", content: JSON.stringify(content) },
+    done: true,
   });
 }
 
@@ -42,6 +54,7 @@ export function startLoopback(mode: LoopMode, validFindings: unknown): Promise<{
     req.on("end", () => {
       state.hits += 1;
       state.lastAuth = req.headers.authorization;
+      state.lastUrl = req.url;
       try {
         state.lastBody = JSON.parse(Buffer.concat(chunks).toString("utf8"));
       } catch {
@@ -61,6 +74,18 @@ export function startLoopback(mode: LoopMode, validFindings: unknown): Promise<{
         res.writeHead(429, { "content-type": "application/json", "retry-after": "1" });
         res.end(JSON.stringify({ error: { message: "rate" } }));
         return;
+      }
+      if (mode === "http429-long") {
+        res.writeHead(429, { "content-type": "application/json", "retry-after": "120" });
+        res.end(JSON.stringify({ error: { message: "rate" } }));
+        return;
+      }
+      if (mode === "http429-then-ok") {
+        if (state.hits === 1) {
+          res.writeHead(429, { "content-type": "application/json", "retry-after": "0" });
+          res.end(JSON.stringify({ error: { message: "rate" } }));
+          return;
+        }
       }
       if (mode === "http500") {
         res.writeHead(500, { "content-type": "application/json" });
@@ -107,12 +132,16 @@ export function startLoopback(mode: LoopMode, validFindings: unknown): Promise<{
               title: "inventado",
               hypothesis: "trecho que nunca apareceu na evidência real do plano xyz",
               citedEvidence: "trecho que nunca apareceu na evidência real do plano",
-              verificationAction: "descartar",
+              verificationAction: "descartar este achado inventado",
             },
           ],
         };
       }
       res.writeHead(200, { "content-type": "application/json" });
+      if (mode === "ollama-ok") {
+        res.end(ollamaOkBody(payload));
+        return;
+      }
       res.end(openaiOkBody(payload));
     });
   });

@@ -1,9 +1,26 @@
 export class ProviderError extends Error {
   readonly code: string;
-  constructor(code: string, message: string) {
+  readonly httpStatus?: number;
+  readonly retryAfterMs?: number;
+  readonly retryable: boolean;
+
+  constructor(
+    code: string,
+    message: string,
+    extra: { httpStatus?: number; retryAfterMs?: number; retryable?: boolean } = {},
+  ) {
     super(message);
     this.code = code;
+    this.httpStatus = extra.httpStatus;
+    this.retryAfterMs = extra.retryAfterMs;
     this.name = "ProviderError";
+    if (extra.retryable !== undefined) {
+      this.retryable = extra.retryable;
+    } else if (code === "INVALID_OUTPUT" || code === "NOT_CONFIGURED") {
+      this.retryable = false;
+    } else {
+      this.retryable = true;
+    }
   }
 }
 

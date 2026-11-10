@@ -6,6 +6,7 @@
 import { resolveProvider } from "./providers.js";
 import { runCritique } from "./pipeline.js";
 import { planInputSchema } from "./schema.js";
+import { PACKAGE_NAME, PACKAGE_VERSION } from "./version.js";
 
 export const MCP_PROTOCOL_VERSION = "2025-11-25";
 
@@ -18,10 +19,12 @@ export interface JsonRpcRequest {
 
 export interface JsonRpcResponse {
   jsonrpc: "2.0";
-  id: string | number;
+  id: string | number | null;
   result?: unknown;
   error?: { code: number; message: string; data?: unknown };
 }
+
+export const JSON_RPC_PARSE_ERROR = -32700;
 
 const TOOL_NAME = "critique_plan";
 
@@ -72,7 +75,7 @@ export async function handleMcpMessage(
       result: {
         protocolVersion: MCP_PROTOCOL_VERSION,
         capabilities: { tools: {} },
-        serverInfo: { name: "critica-de-planos", version: "0.2.0" },
+        serverInfo: { name: PACKAGE_NAME, version: PACKAGE_VERSION },
         instructions:
           "Chame critique_plan manualmente com o plano estruturado. Isto não é Plan→Build nem execução.",
       },
@@ -123,13 +126,20 @@ export async function handleMcpMessage(
       return;
     }
     const result = await runCritique(args.plan, { provider });
-    const text = JSON.stringify(result);
+    const failed = result.status !== "ok";
+    const text = JSON.stringify({
+      status: result.status,
+      code: result.error?.code ?? (failed ? result.status : "OK"),
+      message: result.error?.message ?? result.status,
+      findingsCount: result.findings.length,
+      result,
+    });
     write({
       jsonrpc: "2.0",
       id: raw.id,
       result: {
         content: [{ type: "text", text }],
-        isError: result.status === "input_error",
+        isError: failed,
         structuredContent: result,
       },
     });
@@ -143,11 +153,39 @@ export async function handleMcpMessage(
   });
 }
 
+export function parseErrorResponse(): JsonRpcResponse {
+  return {
+    jsonrpc: "2.0",
+    id: null,
+    error: { code: JSON_RPC_PARSE_ERROR, message: "Parse error" },
+  };
+}
+
 export function parseRpcLine(line: string): JsonRpcRequest | null {
   const trimmed = line.trim();
   if (!trimmed) return null;
   const parsed = JSON.parse(trimmed) as JsonRpcRequest;
   return parsed;
+}
+
+export async function handleStdioLine(
+  line: string,
+  write: (msg: JsonRpcResponse | Record<string, unknown>) => void,
+): Promise<void> {
+  const trimmed = line.trim();
+  if (!trimmed) return;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch {
+    write(parseErrorResponse());
+    return;
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    write({ jsonrpc: "2.0", id: null, error: { code: -32600, message: "Invalid Request" } });
+    return;
+  }
+  await handleMcpMessage(parsed as JsonRpcRequest, write);
 }
 
 export { encode as encodeMcpMessage };

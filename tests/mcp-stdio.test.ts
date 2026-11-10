@@ -78,8 +78,12 @@ describe("MCP JSON-RPC in-process", () => {
       (msg) => replies.push(msg),
     );
     const call = replies[0] as {
-      result: { structuredContent: { status: string; error?: { code: string }; findings: unknown[] } };
+      result: {
+        isError: boolean;
+        structuredContent: { status: string; error?: { code: string }; findings: unknown[] };
+      };
     };
+    assert.equal(call.result.isError, true);
     assert.equal(call.result.structuredContent.status, "unavailable");
     assert.equal(call.result.structuredContent.error?.code, "NOT_CONFIGURED");
     assert.equal(call.result.structuredContent.findings.length, 0);
@@ -138,9 +142,11 @@ describe("MCP stdio subprocesso real", () => {
         },
       });
       const called = JSON.parse(await waitLine());
+      assert.equal(called.result.isError, true);
       const inner = JSON.parse(called.result.content[0].text);
       assert.equal(inner.status, "invalid");
-      assert.equal(inner.findings.length, 0);
+      assert.equal(inner.code, "INVALID_OUTPUT");
+      assert.equal(inner.result.findings.length, 0);
     } finally {
       child.kill("SIGTERM");
     }

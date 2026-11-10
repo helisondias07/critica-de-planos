@@ -2,32 +2,33 @@
 
 ## Problema
 
-Planos misturam passo útil com pressuposto e risco. Recorte: JSON + CLI + bancada, depois HTTP configurável e MCP stdio **manual**. Sem hook Plan→Build (não documentado como integração automática nas fontes oficiais consultadas em 2026-11-10).
+Planos misturam passo útil com pressuposto e risco. Recorte: JSON + CLI + bancada, HTTP configurável e MCP stdio **como ferramenta**. Sem hook Plan→Build (não documentado como integração automática/gate nas fontes oficiais consultadas em 2026-11-10). O Cursor **pode auto-invocar** MCP tools (docs públicas); isso não é gate de execução.
 
 Inspiração de problema: [jrlucas1/claude-critique-hook](https://github.com/jrlucas1/claude-critique-hook). Licença não identificada; código próprio.
 
-## Solução actual
+## Solução actual (v0.3.0)
 
 1. Contrato com `sourceKind` / `sourceId` / `proofKind`.
-2. Heurística determinística (e-commerce sintético). Fixture ruim → **7 achados** neste recorte (dinâmico).
-3. `http-chat`: Chat Completions OpenAI-compatible + dialecto Ollama. **Desligado por omissão.** Sem fallback para heurística.
-4. MCP stdio JSON-RPC, ferramenta `critique_plan`.
-5. CLI + GUI inalterados no papel: não executam o plano.
+2. Heurística determinística. Fixture ruim → **7 achados** (F01–F07) neste recorte.
+3. `http-chat`: Chat Completions + dialecto Ollama `/api/chat`. **Desligado por omissão.** Sem fallback para heurística. `transport=not-configured` até estar realmente configurado.
+4. MCP stdio JSON-RPC, ferramenta `critique_plan`, `isError: true` quando o núcleo não está `ok`.
+5. CLI + GUI: não executam o plano.
 
 ## Histórico de correcções (preservado)
 
 - Auth no blob da evidência; cartão no passo de teste; `tsc` com `.ts` imports.
-- Achados BAD citavam `e1` catálogo (“não descreve cartão”). Âncora passou a passo/restrição.
+- Achados BAD citavam `e1` catálogo. Âncora passou a passo/restrição.
 - Relatório UI só tinha marcação; passou a Chrome Tab/atalhos.
 - Banner sticky cobria JSON.
-- **v2:** provider HTTP + MCP; loopback mock ≠ LLM; BAD alinhado a 7.
+- **v2 (SHA 803eeb4):** provider HTTP + MCP; loopback mock ≠ LLM; BAD alinhado a 7. Revisão independente (cloud `bc-6bfc96e4-4a62-5b49-a210-29d9b54f1b31`) confirmou 45/45, **não aprovou**.
+- **v3:** P1 (invalid sem retry; 401/429 Retry-After; MCP `isError`) e P2 (rótulo inferred-absence; stamp do servidor; replay honesto; citação endurecida; stdio -32700 + fila; versão única; parse de inteiros; teste Ollama loopback). Fixtures **não** maquilhadas.
 
-## Decisões v2
+## Decisões v3
 
-- Um adaptador Chat Completions cobre OpenAI e Ollama `/v1` (docs oficiais).
-- MCP implementado em JSON-RPC próprio (spec), sem instalar plugin na conta do utilizador.
-- Credencial só via nome de env; testes usam `Bearer test-token-not-a-secret`.
-- Fixtures **não** maquilhadas para mudar a contagem.
+- Schema HTTP inválido é falha de contrato (`invalid`), não indisponibilidade transitória.
+- 429 sem `Retry-After` válido não reintenta (nada de retry cego). `Retry-After` maior que o teto falha rápido.
+- Tabela oficial Cursor `mcp.json` STDIO (2026-11-10): `type`, `command`, `args`, `env`, `envFile`. **`cwd` não consta** — o exemplo usa `${workspaceFolder}` em `args`, que **está** documentado.
+- Citação: tokens consecutivos, não substring crua de 8 caracteres. Sem alegar semântica.
 
 ## FIXED / GOOD
 
@@ -35,6 +36,6 @@ Zero achados neste recorte heurístico. **Não é acurácia.**
 
 ## Limitações / bloqueio
 
-E2E com modelo real e host real **não feito**. Ver `docs/INTEGRATION-PLAN.md`.
+E2E com modelo real e host real **não feito**. Ver `docs/INTEGRATION-PLAN.md` e `REVIEW-RESPONSE-v3.md`.
 
 **Status: parcial até E2E com modelo real e host real aprovado.**
