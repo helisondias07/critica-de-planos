@@ -1,0 +1,49 @@
+{
+  "objective": "Entregar vitrine acessível de e-commerce sintético com carrinho e checkout mock, incluindo testes.",
+  "context": "Plano escrito já na forma verificável. Loja Norte fictícia. Sem rede de pagamento.",
+  "constraints": [
+    "sem pagamento real e sem adquirente",
+    "não armazenar número de cartão nem CVV",
+    "apenas dados sintéticos de produto e comprador",
+    "offline, sem credenciais"
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "title": "Contrato do catálogo mock",
+      "description": "Congelar JSON de três SKUs. Empty state e falha de rede têm copy e CTA. Teclado e contraste entram no critério de aceite."
+    },
+    {
+      "id": "s2",
+      "title": "Sessão e carrinho",
+      "description": "Login mock emite sessão opaca. Carrinho em memória. Teste automatizado falha se localStorage contiver cartão ou cvv."
+    },
+    {
+      "id": "s3",
+      "title": "Checkout sandbox",
+      "description": "Fake payment/sandbox devolve token. Estado de erro se o mock expirar. Nunca processar pagamento real."
+    },
+    {
+      "id": "s4",
+      "title": "Testes de regressão",
+      "description": "Passo de teste com comando npm test e fixture de carrinho vazio, sessão ausente e mock timeout."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "e1",
+      "source": "mock-catalogo.json (sintético)",
+      "excerpt": "Três SKUs têxteis, preços em BRL, campo imageAlt para acessibilidade da vitrine."
+    },
+    {
+      "id": "e2",
+      "source": "fake-payment.md (sintético)",
+      "excerpt": "Sandbox local: POST /mock/pay responde 201 com token. Sem chave de adquirente. Timeout documentado em 2500ms."
+    },
+    {
+      "id": "e3",
+      "source": "a11y-notes.md (sintético)",
+      "excerpt": "Foco visível 3px, Tab na ordem vitrine-carrinho-checkout, contraste do texto de erro 4.5:1, aria-live no estado de erro."
+    }
+  ]
+}

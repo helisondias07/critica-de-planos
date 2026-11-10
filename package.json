@@ -1,0 +1,26 @@
+{
+  "name": "critica-de-planos",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Protocolo JSON + CLI para crítica heurística de planos. Não é segundo LLM e não executa o plano.",
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "bin": {
+    "critica-de-planos": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "cli": "tsx src/cli.ts",
+    "demo": "tsx src/server.ts",
+    "demo:serve": "tsx src/server.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}

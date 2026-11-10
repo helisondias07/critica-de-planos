@@ -1,0 +1,48 @@
+{
+  "objective": "Montar vitrine e checkout mock de um e-commerce frontend sintético, com testes no final.",
+  "context": "Domínio fictício Loja Norte. Sem usuários reais. Correção do plano ruim: sem PAN, com sessão, mock de pagamento e estados de erro.",
+  "constraints": [
+    "sem pagamento real e sem adquirente",
+    "não armazenar número de cartão nem CVV",
+    "apenas dados sintéticos de produto e comprador"
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "title": "Vitrine do catálogo",
+      "description": "Renderizar lista de produtos do JSON estático, com empty state, estado de erro de rede e foco visível no CTA."
+    },
+    {
+      "id": "s2",
+      "title": "Sessão sintética e carrinho",
+      "description": "Criar login mock e persistir só o id de sessão. Carrinho em memória, sem localStorage de cartão."
+    },
+    {
+      "id": "s3",
+      "title": "Checkout com fake payment",
+      "description": "Pagamento via mock/sandbox que devolve token opaco. Nunca capturar PAN. Falha de mock gera estado de erro."
+    },
+    {
+      "id": "s4",
+      "title": "Acessibilidade e testes",
+      "description": "Critério de aceite: Tab percorre compra, contraste do tema, lista vazia com CTA. Teste automatizado cobre localStorage sem cartão/cvv."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "e1",
+      "source": "mock-catalogo.json (sintético)",
+      "excerpt": "Catálogo sintético com três SKUs têxteis e preços em BRL, agora referenciado só como fonte de vitrine."
+    },
+    {
+      "id": "e2",
+      "source": "nota-de-restrição.md (sintético)",
+      "excerpt": "Restrição explícita: não armazenar número de cartão; dado sintético apenas; proibido pagamento real neste experimento."
+    },
+    {
+      "id": "e3",
+      "source": "fake-payment.md (sintético)",
+      "excerpt": "Fake payment devolve {token:'tok_synth_01'} sem PAN. Timeout do mock deve mostrar estado de erro, não retry infinito."
+    }
+  ]
+}

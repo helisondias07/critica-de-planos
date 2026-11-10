@@ -1,0 +1,43 @@
+{
+  "objective": "Montar vitrine e checkout de um e-commerce frontend sintético, com testes no final.",
+  "context": "Domínio fictício Loja Norte. Sem usuários reais. Catálogo mock de três produtos têxteis.",
+  "constraints": [
+    "sem pagamento real e sem adquirente",
+    "não armazenar número de cartão nem CVV",
+    "apenas dados sintéticos de produto e comprador"
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "title": "Vitrine do catálogo",
+      "description": "Renderizar lista de produtos a partir de um JSON estático. Assumindo que a API de estoque está sempre disponível."
+    },
+    {
+      "id": "s2",
+      "title": "Carrinho em memória",
+      "description": "Permitir adicionar itens e gravar o número do cartão em localStorage para 'agilizar' o próximo pagamento."
+    },
+    {
+      "id": "s3",
+      "title": "Processar pagamento",
+      "description": "Capturar cartão completo e cobrar o total. Depois a gente vê testes e o que acontece se a cobrança falhar."
+    },
+    {
+      "id": "s4",
+      "title": "Confirmação",
+      "description": "Mostrar página de sucesso. Não precisa se preocupar com lista vazia nem falha de rede."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "e1",
+      "source": "mock-catalogo.json (sintético)",
+      "excerpt": "Catálogo sintético com três SKUs têxteis e preços em BRL. Não descreve checkout, sessão, cartão nem estados de erro da interface."
+    },
+    {
+      "id": "e2",
+      "source": "nota-de-restrição.md (sintético)",
+      "excerpt": "Restrição explícita: não armazenar número de cartão; dado sintético apenas; proibido pagamento real neste experimento."
+    }
+  ]
+}

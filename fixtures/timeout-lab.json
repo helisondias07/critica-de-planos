@@ -1,0 +1,18 @@
+{
+  "objective": "Plano mínimo só para exercitar timeout do provedor fake.",
+  "constraints": ["offline", "sem modelo real"],
+  "steps": [
+    {
+      "id": "s1",
+      "title": "Passo único",
+      "description": "Não deve ser executado. Serve apenas como veículo do laboratório de timeout."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "e1",
+      "source": "lab.txt (sintético)",
+      "excerpt": "Evidência sintética para o laboratório de timeout e abort. Sem conteúdo operacional."
+    }
+  ]
+}

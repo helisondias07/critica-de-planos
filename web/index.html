@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>Crítica de planos — bancada local (não é LLM)</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <a class="skip" href="#principal">Saltar para o conteúdo</a>
+    <div class="stamp" role="status">
+      <strong>Heurística determinística / replay / fake</strong>
+      <span>NÃO é segundo LLM · NÃO valida qualidade de IA · NÃO é hook nem Plan Mode · NÃO executa o plano</span>
+      <span>Status: MVP local com integração de modelo real pendente</span>
+    </div>
+    <header class="mast">
+      <p class="eyebrow">Experimento autoral · protocolo JSON + CLI + bancada local</p>
+      <h1>Crítica de planos</h1>
+      <p class="lede">
+        Segunda etapa de revisão: aponta riscos, pressupostos e lacunas com evidência citada
+        e ação verificável. Nunca aprova. Nunca executa. Dados sintéticos, sem rede e sem credenciais.
+      </p>
+      <p class="kbd-hint">
+        Teclado: <kbd>Alt</kbd>+<kbd>1</kbd> bancada,
+        <kbd>Alt</kbd>+<kbd>2</kbd> exemplos,
+        <kbd>Alt</kbd>+<kbd>3</kbd> inspeção,
+        <kbd>Alt</kbd>+<kbd>4</kbd> falhas,
+        <kbd>Alt</kbd>+<kbd>R</kbd> correr crítica,
+        <kbd>?</kbd> atalhos.
+      </p>
+    </header>
+    <nav aria-label="Seções da bancada">
+      <ul class="tabs" role="tablist">
+        <li><button type="button" role="tab" id="tab-bancada" aria-controls="panel-bancada" aria-selected="true">Bancada</button></li>
+        <li><button type="button" role="tab" id="tab-exemplos" aria-controls="panel-exemplos" aria-selected="false">Exemplos</button></li>
+        <li><button type="button" role="tab" id="tab-inspecao" aria-controls="panel-inspecao" aria-selected="false">Inspeção</button></li>
+        <li><button type="button" role="tab" id="tab-falhas" aria-controls="panel-falhas" aria-selected="false">Falhas</button></li>
+      </ul>
+    </nav>
+    <main id="principal">
+      <section id="panel-bancada" role="tabpanel" aria-labelledby="tab-bancada">
+        <article class="sheet">
+          <h2>O que esta bancada faz</h2>
+          <ul>
+            <li>Recebe um plano JSON (objetivo, passos, restrições, evidências sintéticas).</li>
+            <li>Roda um crítico <em>heurístico determinístico</em> no servidor local — o mesmo núcleo do CLI.</li>
+            <li>Devolve achados com id, severidade, stepId válido, evidência citada, hipótese e ação verificável.</li>
+            <li>Em falha de provedor: status <code>unavailable</code> ou <code>invalid</code>, achados vazios; o chamador segue.</li>
+          </ul>
+          <h2>O que ela recusa</h2>
+          <ul>
+            <li>Não chama modelo, não usa credencial, não compra API.</li>
+            <li>Não afirma integração com Cursor Hooks ou Plan Mode.</li>
+            <li>Não trata a saída como instrução confiável.</li>
+            <li>Inspiração declarada: repositório de João Raul (licença não identificada; nenhum trecho reutilizado).</li>
+          </ul>
+        </article>
+      </section>
+      <section id="panel-exemplos" role="tabpanel" aria-labelledby="tab-exemplos" hidden>
+        <div class="toolbar">
+          <label>
+            Fixture
+            <select id="fixture-select">
+              <option value="ecommerce-bad.json">Ruim — checkout com cartão em localStorage</option>
+              <option value="ecommerce-fixed.json">Corrigido — mock, sessão, erros, testes</option>
+              <option value="ecommerce-good.json">Bom — já verificável</option>
+              <option value="prompt-injection.json">Injeção literal em evidência</option>
+              <option value="malformed.json">Entrada malformada</option>
+              <option value="timeout-lab.json">Laboratório (usar com provedor fake)</option>
+            </select>
+          </label>
+          <label>
+            Provedor
+            <select id="provider-select">
+              <option value="heuristic">heuristic (determinístico)</option>
+              <option value="fake:ok">fake:ok</option>
+              <option value="fake:timeout">fake:timeout</option>
+              <option value="fake:error">fake:error</option>
+              <option value="fake:invalid">fake:invalid</option>
+              <option value="fake:invented">fake:invented</option>
+              <option value="llm-pending">llm-pending (sempre unavailable)</option>
+            </select>
+          </label>
+          <button type="button" class="primary" id="run-btn">Correr crítica</button>
+        </div>
+        <p id="run-status" class="status" role="status" aria-live="polite">Nenhuma crítica nesta sessão.</p>
+        <pre id="plan-preview" class="code" tabindex="0" aria-label="JSON do plano selecionado"></pre>
+      </section>
+      <section id="panel-inspecao" role="tabpanel" aria-labelledby="tab-inspecao" hidden>
+        <div class="grid-3">
+          <article class="sheet">
+            <h2>Entrada</h2>
+            <div id="insp-entrada" class="stack"></div>
+          </article>
+          <article class="sheet">
+            <h2>Achados</h2>
+            <div id="insp-achados" class="stack"></div>
+          </article>
+          <article class="sheet">
+            <h2>Evidências</h2>
+            <div id="insp-evidencias" class="stack"></div>
+          </article>
+        </div>
+      </section>
+      <section id="panel-falhas" role="tabpanel" aria-labelledby="tab-falhas" hidden>
+        <div class="toolbar">
+          <button type="button" data-lab="timeout">Simular timeout</button>
+          <button type="button" data-lab="invalid">Saída inválida</button>
+          <button type="button" data-lab="error">Provedor indisponível</button>
+          <button type="button" data-lab="invented">Evidência inventada</button>
+          <button type="button" data-lab="limit">Limite de chamadas</button>
+          <button type="button" data-lab="malformed">Input malformado</button>
+        </div>
+        <p class="hint">Cada botão usa o núcleo real com provedor fake ou entrada inválida. Nada sai desta máquina.</p>
+        <pre id="lab-out" class="code" tabindex="0" aria-label="Resultado do laboratório de falhas"></pre>
+      </section>
+    </main>
+    <div id="error-banner" class="error-banner" hidden role="alert"></div>
+    <dialog id="help-dialog" aria-labelledby="help-title">
+      <h2 id="help-title">Atalhos</h2>
+      <ul>
+        <li><kbd>Alt</kbd>+<kbd>1…4</kbd> — seções</li>
+        <li><kbd>Alt</kbd>+<kbd>R</kbd> — correr crítica da fixture atual</li>
+        <li><kbd>?</kbd> — esta ajuda · <kbd>Escape</kbd> fecha</li>
+      </ul>
+      <button type="button" id="help-close">Fechar</button>
+    </dialog>
+    <footer>
+      <p>
+        Layout próprio desta bancada. Sem CDN. Sem imitação de produto de terceiros.
+        Crítico local, reproduzível depois de <code>npm ci</code>.
+      </p>
+    </footer>
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

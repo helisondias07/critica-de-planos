@@ -1,0 +1,26 @@
+{
+  "$id": "https://local.critica-de-planos/schemas/critique-output.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CritiqueResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["status", "criticKind", "disclaimer", "findings", "meta"],
+  "properties": {
+    "status": { "enum": ["ok", "unavailable", "invalid", "input_error"] },
+    "criticKind": {
+      "enum": ["heuristic-deterministic", "replay", "fake", "unavailable"]
+    },
+    "disclaimer": { "type": "string" },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "type": "string" },
+        "message": { "type": "string" }
+      }
+    },
+    "findings": { "type": "array", "maxItems": 20 },
+    "meta": { "type": "object" }
+  }
+}
