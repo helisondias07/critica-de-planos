@@ -1,8 +1,10 @@
 # Crítica de planos
 
-Experimento **local** em TypeScript/Node: protocolo JSON independente de host + CLI manual + bancada web na mesma máquina.
+**MVP honesto.** Sem E2E com modelo (LLM) real. Sem E2E com host real (Cursor ou Claude Code). A heurística determinística **não é IA**. A ferramenta MCP `critique_plan` é uma ponte **manual** (o host chama a ferramenta); **não** é gancho automático de planos nem gate Plan→Build.
 
-**Status: parcial** (v0.3.0). Revisão independente do SHA `803eeb4` confirmou testes, mas **não aprovou**. Correções P1/P2 neste draft. Integração com modelo real e host real **ainda bloqueada**. Não publicado, sem deploy, sem PR.
+Experimento **local** em TypeScript/Node: protocolo JSON independente de host + CLI + bancada web na mesma máquina. Sem deploy nesta etapa.
+
+Inspiração (só o problema de “segunda opinião sobre um plano”), **sem reutilizar código**: [jrlucas1/claude-critique-hook](https://github.com/jrlucas1/claude-critique-hook) de João Raul. Consulta pública: `license: null`, sem LICENSE identificado — implementação própria.
 
 ## O que é (e o que não é)
 
@@ -23,8 +25,6 @@ O crítico padrão é **heurístico determinístico** (regras sobre o texto). Ta
 - **NÃO é hook do Cursor, Plan Mode, nem integração automática Plan→Build.** Esses modos existem na documentação de produto; este recorte não os usa e não afirma compatibilidade.
 - **NÃO chama modelo real neste recorte** (`http-chat` existe mas fica `NOT_CONFIGURED` até o utilizador ligar endpoint+model+enable). Loopback de teste **não é LLM**.
 - Ponte MCP stdio (`npm run mcp`, ferramenta `critique_plan`) é **ferramenta**. A documentação pública do Cursor (consultada 2026-11-10) diz que o agente **pode auto-invocar** ferramentas MCP quando relevantes, inclusive em Plan Mode, com aprovação por omissão. Isso **não** é um gate Plan→Build nem captura automática de planos. Não inventámos esse gancho.
-
-Inspiração (apenas o problema de “segunda opinião sobre um plano”), **sem reutilizar código**: [jrlucas1/claude-critique-hook](https://github.com/jrlucas1/claude-critique-hook) de João Raul. Consulta pública: `license: null`, sem arquivo LICENSE identificado. Tratado como **licença não identificada** — implementação própria.
 
 ## Requisitos
 
@@ -60,7 +60,7 @@ npm run cli -- --schema
 npm run cli -- --help
 ```
 
-`http-chat` sem `CRITICA_LLM_ENABLED=true` sai `unavailable` / `NOT_CONFIGURED` e **não** corre a heurística.
+`http-chat` sem `CRITICA_LLM_ENABLED=true` sai `unavailable` / `NOT_CONFIGURED` (exit **3**) e **não** corre a heurística. `CRITICA_LLM_MAX_TOKENS=0` (ou valor inválido) com `--provider http-chat` também: JSON do contrato com `error.code=NOT_CONFIGURED`, exit 3 — não usa o default 800.
 
 `replay` **exige** `--replay-file` ou `CRITICA_REPLAY_PATH` com um JSON `{ "findings": [...] }`. Sem gravação a CLI sai com código 1 (não devolve 0 achados em silêncio).
 
@@ -80,7 +80,7 @@ npm run demo
 | 0 | `ok` | Crítico respondeu; achados podem ser 0. **Não é aprovação.** |
 | 1 | — | Flag/provedor desconhecido (falha da CLI, não do plano) |
 | 2 | `input_error` | Entrada inválida ou JSON ilegível (**distinguível**) |
-| 3 | `unavailable` | Timeout, abort, limite de chamadas, provedor fora |
+| 3 | `unavailable` | Timeout, abort, limite de chamadas, provedor fora, **ou** http-chat mal configurado (`NOT_CONFIGURED`, incl. `CRITICA_LLM_MAX_TOKENS=0`) |
 | 4 | `invalid` | Saída do crítico não estruturada |
 
 Em `unavailable` e `invalid` a CLI **ainda imprime JSON**, com `findings: []`. Erro de crítico não “derruba” o chamador além do status explícito.

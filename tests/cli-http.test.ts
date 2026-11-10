@@ -49,6 +49,34 @@ describe("CLI streams e exit codes", () => {
     assert.equal(JSON.parse(out).status, "input_error");
   });
 
+  it("CRITICA_LLM_MAX_TOKENS=0 com http-chat sai JSON NOT_CONFIGURED e exit 3", async () => {
+    const prev = process.env.CRITICA_LLM_MAX_TOKENS;
+    process.env.CRITICA_LLM_MAX_TOKENS = "0";
+    const stdout = new PassThrough();
+    const stderr = new PassThrough();
+    const outP = collect(stdout);
+    try {
+      const code = await runCli(
+        ["--input", "fixtures/timeout-lab.json", "--provider", "http-chat", "--json-only"],
+        { stdout, stderr },
+      );
+      stdout.end();
+      stderr.end();
+      const out = await outP;
+      assert.equal(code, 3);
+      const parsed = JSON.parse(out);
+      assert.equal(parsed.status, "unavailable");
+      assert.equal(parsed.error.code, "NOT_CONFIGURED");
+      assert.match(parsed.error.message, /CRITICA_LLM_MAX_TOKENS/);
+      assert.equal(parsed.findings.length, 0);
+      assert.equal(parsed.meta.blockReason, "not_configured");
+      assert.equal(parsed.meta.transport, "not-configured");
+    } finally {
+      if (prev === undefined) delete process.env.CRITICA_LLM_MAX_TOKENS;
+      else process.env.CRITICA_LLM_MAX_TOKENS = prev;
+    }
+  });
+
   it("--json-only não mistura resumo em stdout", async () => {
     const stdout = new PassThrough();
     const stderr = new PassThrough();

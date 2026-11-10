@@ -70,7 +70,7 @@ async function runMode(
   return { server, result, state, elapsed: Date.now() - started };
 }
 
-describe("P1/P2 regressões da revisão 803eeb4", () => {
+describe("P1/P2 regressões (revisão v3)", () => {
   const servers: Server[] = [];
   after(async () => {
     for (const s of servers) await close(s);

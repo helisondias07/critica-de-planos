@@ -20,7 +20,7 @@ Inspiração de problema: [jrlucas1/claude-critique-hook](https://github.com/jrl
 - Achados BAD citavam `e1` catálogo. Âncora passou a passo/restrição.
 - Relatório UI só tinha marcação; passou a Chrome Tab/atalhos.
 - Banner sticky cobria JSON.
-- **v2 (SHA 803eeb4):** provider HTTP + MCP; loopback mock ≠ LLM; BAD alinhado a 7. Revisão independente (cloud `bc-6bfc96e4-4a62-5b49-a210-29d9b54f1b31`) confirmou 45/45, **não aprovou**.
+- **v2:** provider HTTP + MCP; loopback mock ≠ LLM; BAD alinhado a 7. Revisão independente confirmou a suíte da época e **não aprovou** (histórico git; SHAs não são gravados aqui para não ficarem defasados).
 - **v3:** P1 (invalid sem retry; 401/429 Retry-After; MCP `isError`) e P2 (rótulo inferred-absence; stamp do servidor; replay honesto; citação endurecida; stdio -32700 + fila; versão única; parse de inteiros; teste Ollama loopback). Fixtures **não** maquilhadas.
 
 ## Decisões v3
@@ -36,6 +36,6 @@ Zero achados neste recorte heurístico. **Não é acurácia.**
 
 ## Limitações / bloqueio
 
-E2E com modelo real e host real **não feito**. Ver `docs/INTEGRATION-PLAN.md` e `REVIEW-RESPONSE-v3.md`.
+E2E com modelo real e host real **não feito**. Ver `docs/INTEGRATION-PLAN.md` e `docs/REVIEW-RESPONSE.md`.
 
 **Status: parcial até E2E com modelo real e host real aprovado.**

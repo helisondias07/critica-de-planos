@@ -93,7 +93,7 @@ describe("MCP JSON-RPC in-process", () => {
 describe("MCP stdio subprocesso real", () => {
   it("initialize/tools-list/tools-call até o núcleo fake", async () => {
     const child = spawn("npx", ["tsx", "src/mcp-stdio.ts"], {
-      cwd: "/workspace",
+      cwd: process.cwd(),
       stdio: ["pipe", "pipe", "pipe"],
       env: { ...process.env, CRITICA_MCP_PROVIDER: "fake:ok" },
     });

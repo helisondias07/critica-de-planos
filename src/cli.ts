@@ -2,7 +2,9 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { DEFAULTS } from "./defaults.js";
+import type { CritiqueResult } from "./contract.js";
+import { DEFAULTS, DISCLAIMER } from "./defaults.js";
+import { ProviderError } from "./errors.js";
 import { formatSummary } from "./format.js";
 import { exitCodeFor, runCritique } from "./pipeline.js";
 import { resolveProvider } from "./providers.js";
@@ -110,6 +112,7 @@ Exit codes:
   0 ok | 1 inesperado | 2 input_error | 3 unavailable | 4 invalid
 
 http-chat fica NOT_CONFIGURED salvo CRITICA_LLM_ENABLED=true + endpoint + model.
+CRITICA_LLM_MAX_TOKENS=0 (negativo/NaN) com --provider http-chat: JSON status=unavailable, error.code=NOT_CONFIGURED, exit 3. Não cai no default 800.
 Não há fallback silencioso para heurística. MCP stdio: npm run mcp (ferramenta critique_plan).
 Este CLI NÃO é hook do Cursor, NÃO usa Plan Mode, NÃO executa os achados.
 `;
@@ -174,6 +177,31 @@ export async function runCli(argv: string[], io = { stdout: process.stdout, stde
   try {
     provider = resolveProvider(flags.provider, { replayFile: flags.replayFile });
   } catch (err) {
+    if (err instanceof ProviderError) {
+      const result: CritiqueResult = {
+        status: "unavailable",
+        criticKind: flags.provider === "http-chat" ? "http-chat" : "unavailable",
+        disclaimer: DISCLAIMER,
+        findings: [],
+        error: { code: err.code, message: err.message },
+        meta: {
+          providerId: flags.provider,
+          criticKind: flags.provider === "http-chat" ? "http-chat" : "unavailable",
+          callsUsed: 0,
+          maxCalls: flags.maxCalls ?? DEFAULTS.maxCalls,
+          retriesUsed: 0,
+          timedOut: false,
+          aborted: false,
+          droppedFindings: 0,
+          ignoredUnexpectedFields: [],
+          transport: flags.provider === "http-chat" ? "not-configured" : undefined,
+          blockReason: err.code === "NOT_CONFIGURED" ? "not_configured" : undefined,
+        },
+      };
+      if (!flags.summaryOnly) io.stdout.write(JSON.stringify(result, null, 2) + "\n");
+      if (!flags.jsonOnly) io.stderr.write(formatSummary(result) + "\n");
+      return exitCodeFor(result.status);
+    }
     io.stderr.write(`${err instanceof Error ? err.message : String(err)}\n`);
     return 1;
   }
